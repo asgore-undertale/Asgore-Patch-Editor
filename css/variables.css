@@ -1,0 +1,77 @@
+/* ═══════════════════════════════════════════════════
+   Asgore Patch Editor — Design System & Styles
+   ═══════════════════════════════════════════════════ */
+
+/* ── Tokens ─────────────────────────────────────── */
+:root {
+  /* Surface */
+  --bg-body: #0b0e14;
+  --bg-surface: #11151c;
+  --bg-elevated: #181d27;
+  --bg-overlay: rgba(17, 21, 28, 0.85);
+
+  /* Accent */
+  --accent: #06d6a0;
+  --accent-dim: #06d6a033;
+  --accent-glow: rgba(6, 214, 160, 0.12);
+  --accent-secondary: #118ab2;
+
+  /* Text */
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+
+  /* Semantic */
+  --danger: #f85149;
+  --warning: #d29922;
+  --info: #58a6ff;
+  --modified: #d29922;
+
+  /* Selection */
+  --sel-hex-bg: rgba(6, 214, 160, 0.22);
+  --sel-hex-border: #06d6a0;
+  --match-bg: rgba(210, 153, 34, 0.25);
+  --match-active: rgba(210, 153, 34, 0.55);
+
+  /* Layout */
+  --toolbar-h: 52px;
+  --statusbar-h: 30px;
+  --header-h: 32px;
+  --row-h: 22px;
+  --radius: 8px;
+  --radius-sm: 5px;
+
+  /* Font */
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  --font-ui: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* ── Reset ──────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg-body);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Utility ────────────────────────────────────── */
+.hidden {
+  display: none !important;
+}
+
