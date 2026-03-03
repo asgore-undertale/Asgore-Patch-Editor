@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asgore Patch Editor — Hex Editor</title>
+  <meta name="description" content="A modern, dark-themed hex editor for inspecting and editing binary files directly in your browser." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="index.css">
+  <!-- Prism.js Theme -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+</head>
+<body>
+  <!-- ═══════ TOOLBAR ═══════ -->
+  <header id="toolbar">
+    <div class="toolbar-left">
+      <button id="btn-open" title="Open File (Ctrl+O)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span>Open</span>
+      </button>
+      <button id="btn-save" title="Save / Export File (Ctrl+S)" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <span>Save</span>
+      </button>
+
+      <div class="toolbar-divider"></div>
+
+      <button id="btn-open-proj" title="Open Project (Load Groups & Scripts)" class="proj-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>Open Project</span>
+      </button>
+      <button id="btn-save-proj" title="Save Project (Export Groups & Scripts)" class="proj-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8l-6-6z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>
+        <span>Save Project</span>
+      </button>
+
+      <div class="toolbar-divider"></div>
+      <div id="file-info">
+        <span id="file-name" class="file-meta">No file loaded</span>
+        <span id="file-size" class="file-meta"></span>
+      </div>
+    </div>
+
+    <div class="toolbar-right">
+      <div class="search-group">
+        <div class="input-wrapper" id="search-wrapper">
+          <svg class="input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="search-input" placeholder="Search hex or ASCII…" spellcheck="false" autocomplete="off" />
+          <select id="search-mode" title="Search mode">
+            <option value="hex">Hex</option>
+            <option value="ascii">ASCII</option>
+          </select>
+        </div>
+        <button id="btn-search-prev" title="Previous match" disabled>▲</button>
+        <button id="btn-search-next" title="Next match" disabled>▼</button>
+        <div class="toolbar-divider"></div>
+        <span id="search-results" class="file-meta"></span>
+      </div>
+
+      <div class="input-wrapper" id="goto-wrapper">
+        <svg class="input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <input type="text" id="goto-input" placeholder="Go to offset… (Ctrl+G)" spellcheck="false" autocomplete="off" />
+        <select id="goto-mode" title="Offset mode">
+          <option value="hex">Hex</option>
+          <option value="dec">Dec</option>
+        </select>
+      </div>
+    </div>
+    <input type="file" id="file-picker" hidden />
+    <input type="file" id="proj-picker" accept=".json" hidden />
+  </header>
+
+  <!-- ═══════ WELCOME SCREEN ═══════ -->
+  <main id="welcome-screen">
+    <div class="welcome-content">
+      <div class="welcome-icon">
+        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="url(#grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#06d6a0"/>
+              <stop offset="100%" style="stop-color:#118ab2"/>
+            </linearGradient>
+          </defs>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+        </svg>
+      </div>
+      <h1>Asgore Patch Editor</h1>
+      <p>Open any file to inspect and edit its raw bytes</p>
+      <button id="btn-welcome-open">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Open a file
+      </button>
+      <span class="shortcut-hint">or press <kbd>Ctrl</kbd> + <kbd>O</kbd></span>
+    </div>
+  </main>
+
+  <!-- ═══════ HEX EDITOR ═══════ -->
+  <main id="hex-editor" class="hidden">
+    <!-- Column headers -->
+    <div id="hex-header">
+      <div class="col-offset">Offset</div>
+      <div class="col-hex">
+        <span>00</span><span>01</span><span>02</span><span>03</span>
+        <span>04</span><span>05</span><span>06</span><span>07</span>
+        <span class="hex-gap"></span>
+        <span>08</span><span>09</span><span>0A</span><span>0B</span>
+        <span>0C</span><span>0D</span><span>0E</span><span>0F</span>
+      </div>
+      <div class="col-ascii">Decoded ASCII</div>
+    </div>
+    <!-- Editor body: hex scroll + code runner + groups panel -->
+    <div id="editor-body">
+      <!-- Scrollable container -->
+      <div id="hex-scroll">
+        <div id="hex-spacer"></div>
+        <div id="hex-rows"></div>
+      </div>
+      
+      <!-- Splitter 1: Hex | Code Runner -->
+      <div class="splitter-v" id="split-hex-code"></div>
+      
+      <!-- ═══════ CODE RUNNER PANEL (Middle) ═══════ -->
+      <div id="code-runner-panel">
+        <div class="code-runner-header">
+          <span class="code-title">Script Runner</span>
+          <div>
+            <button id="btn-run-code" title="Execute script (Ctrl+Enter)">Execute</button>
+            <button id="btn-toggle-code" title="Toggle Code Panel">▶</button>
+          </div>
+        </div>
+        <div class="code-runner-body">
+          <div class="code-editor-wrap">
+            <div class="editor-layered">
+              <pre aria-hidden="true" class="language-javascript"><code class="language-javascript" id="code-overlay">
+// GROUPS[i] gives access to group 'i'. You can read .ranges or .regexRanges.
+// Use getString(start, end) to get the ASCII content of a range.
+// You can directly modify bytes via the CONTENT array!
+if (GROUPS.length > 0) {
+  const g = GROUPS[0];
+  const allRanges = [...g.ranges, ...g.regexRanges];
+  
+  if (allRanges.length === 0) {
+    print(`Group "${g.name}" has no matches.`);
+  } else {
+    allRanges.forEach((r, idx) => {
+      const text = getString(r.start, r.end);
+      print(`[0x${r.start.toString(16)} - ${(r.end).toString(16)}]: "${text}" -> Redacted`);
+      
+      // Example Modification: Overwrite the matched bytes with asterisks '*' (0x2A)
+      for (let i = r.start; i <= r.end; i++) {
+        CONTENT[i] = 0x2A; 
+      }
+    });
+    print("Check the Hex Editor, the modified bytes should now be red and display *!");
+  }
+} else {
+  print("No groups created yet. Create one and assign some bytes or write a regex pattern!");
+}</code></pre>
+              <textarea id="code-input" spellcheck="false" class="language-javascript">
+// GROUPS[i] gives access to group 'i'. You can read .ranges or .regexRanges.
+// Use getString(start, end) to get the ASCII content of a range.
+// You can directly modify bytes via the CONTENT array!
+if (GROUPS.length > 0) {
+  const g = GROUPS[0];
+  const allRanges = [...g.ranges, ...g.regexRanges];
+  
+  if (allRanges.length === 0) {
+    print(`Group "${g.name}" has no matches.`);
+  } else {
+    allRanges.forEach((r, idx) => {
+      const text = getString(r.start, r.end);
+      print(`[0x${r.start.toString(16)} - ${(r.end).toString(16)}]: "${text}" -> Redacted`);
+      
+      // Example Modification: Overwrite the matched bytes with asterisks '*' (0x2A)
+      for (let i = r.start; i <= r.end; i++) {
+        CONTENT[i] = 0x2A; 
+      }
+    });
+    print("Check the Hex Editor, the modified bytes should now be red and display *!");
+  }
+} else {
+  print("No groups created yet. Create one and assign some bytes or write a regex pattern!");
+}
+              </textarea>
+            </div>
+          </div>
+          
+          <!-- Splitter 3: Code Editor / Output Console -->
+          <div class="splitter-h" id="split-code-out"></div>
+          
+          <div class="code-output-wrap">
+            <pre id="code-output"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Splitter 2: Code Runner | Groups Panel -->
+      <div class="splitter-v" id="split-code-groups"></div>
+
+      <!-- Groups sidebar (Right) -->
+      <aside id="groups-panel">
+        <div class="groups-header">
+          <span class="groups-title">Byte Groups</span>
+          <button id="btn-add-group" title="New group">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <div id="groups-list"></div>
+        <div id="groups-empty" class="groups-empty">
+          <p>No groups yet.</p>
+          <p>Select bytes then click <strong>+</strong> to create a group.</p>
+        </div>
+      </aside>
+    </div>
+  </main>  <!-- ═══════ STATUS BAR ═══════ -->
+  <footer id="statusbar">
+    <div class="status-left">
+      <span id="status-position">Offset: —</span>
+      <span class="status-divider">│</span>
+      <span id="status-value">Value: —</span>
+    </div>
+    <div class="status-right">
+      <span id="status-modified" class="badge hidden">Modified</span>
+      <span id="status-encoding">UTF-8</span>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="index.js"></script>
+</body>
+</html>
