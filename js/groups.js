@@ -737,7 +737,8 @@ function exportGroupToExcel(g) {
       return {
         "Start Offset": `0x${formatOffset(r.start)}`,
         "End Offset": `0x${formatOffset(r.end)}`,
-        "Match String": matchStr
+        "Match String": matchStr,
+        "Replacement String": ""
       };
     });
 
@@ -747,7 +748,8 @@ function exportGroupToExcel(g) {
     ws['!cols'] = [
       { wch: 15 }, // Start
       { wch: 15 }, // End
-      { wch: 50 }, // Match
+      { wch: 40 }, // Match
+      { wch: 40 }, // Replacement
     ];
 
     // Excel sheet name limit is 31 chars
@@ -789,39 +791,55 @@ async function importGroupsFromExcel(fileList) {
         g.ranges = [];
       }
 
-      // Each sheet is a file name
+      // Collect all rows from all sheets first
+      const allRows = [];
       workbook.SheetNames.forEach(sheetName => {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-        // Find matching file in project
-        // Note: sheet names might be truncated or sanitized
         const targetFile = files.find(f => {
           const sanitized = f.name.replace(/[\\/?*[\]]/g, '_').substring(0, 31);
           return sanitized.toLowerCase() === sheetName.toLowerCase();
         }) || files.find(f => f.name.toLowerCase() === sheetName.toLowerCase());
 
-        if (!targetFile) {
+        if (targetFile) {
+          jsonData.forEach(row => {
+            allRows.push({ row, targetFile });
+          });
+        } else {
           console.warn(`File "${sheetName}" not found in current project.`);
-          return;
         }
-
-        jsonData.forEach(row => {
-          const startVal = row["Start Offset"];
-          const endVal = row["End Offset"];
-
-          if (startVal !== undefined && endVal !== undefined) {
-            // Parse hex (e.g. "0x00000010" or "00000010")
-            const start = parseInt(String(startVal).replace(/^0x/i, ''), 16);
-            const end = parseInt(String(endVal).replace(/^0x/i, ''), 16);
-
-            if (!isNaN(start) && !isNaN(end)) {
-              g.ranges.push({ fileId: targetFile.id, start, end });
-            }
-          }
-        });
       });
 
+      // Sort all patches and ranges by offset DESCENDING
+      // This is crucial: patching from bottom to top means offsets at the top
+      // of the file remain stable while we work.
+      allRows.sort((a, b) => {
+        const startA = parseInt(String(a.row["Start Offset"]).replace(/^0x/i, ''), 16);
+        const startB = parseInt(String(b.row["Start Offset"]).replace(/^0x/i, ''), 16);
+        return startB - startA;
+      });
+
+      allRows.forEach(({ row, targetFile }) => {
+        const startVal = row["Start Offset"];
+        const endVal = row["End Offset"];
+
+        if (startVal !== undefined && endVal !== undefined) {
+          const start = parseInt(String(startVal).replace(/^0x/i, ''), 16);
+          const end = parseInt(String(endVal).replace(/^0x/i, ''), 16);
+
+          if (!isNaN(start) && !isNaN(end)) {
+            g.ranges.push({ fileId: targetFile.id, start, end });
+
+            // Apply Patching if Replacement String is provided
+            const replacement = row["Replacement String"];
+            if (replacement !== undefined && replacement !== null && String(replacement).length > 0) {
+              const encoder = new TextEncoder();
+              const bytes = encoder.encode(String(replacement));
+              patchFile(targetFile.id, start, (end - start + 1), bytes);
+            }
+          }
+        }
+      });
     } catch (err) {
       console.error("Error importing XLSX:", file.name, err);
       alert(`Failed to import ${file.name}`);

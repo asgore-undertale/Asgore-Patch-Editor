@@ -283,22 +283,28 @@ document.addEventListener('keydown', (e) => {
     navigator.clipboard.readText().then((text) => {
       if (!text) return;
       const lo = Math.min(selStart, selEnd);
+      const hi = Math.max(selStart, selEnd);
+      const removeLen = hi - lo + 1;
+      let newBytes;
 
       if (activePane === 'hex') {
-        const clean = text.replace(/[\s,]+/g, '');
-        if (!/^[0-9a-fA-F]*$/.test(clean) || clean.length === 0 || clean.length % 2 !== 0) return;
-        const byteCount = clean.length / 2;
-        for (let i = 0; i < byteCount && (lo + i) < dataView.length; i++) {
-          const val = parseInt(clean.substr(i * 2, 2), 16);
-          mods.set(lo + i, val);
+        const clean = text.replace(/[^0-9a-fA-F]/g, '');
+        if (clean.length === 0 || clean.length % 2 !== 0) return;
+        newBytes = new Uint8Array(clean.length / 2);
+        for (let i = 0; i < newBytes.length; i++) {
+          newBytes[i] = parseInt(clean.substr(i * 2, 2), 16);
         }
       } else {
-        for (let i = 0; i < text.length && (lo + i) < dataView.length; i++) {
-          mods.set(lo + i, text.charCodeAt(i));
-        }
+        newBytes = new TextEncoder().encode(text);
       }
-      statusMod.classList.remove('hidden');
-      scheduleRecomputeRegex();
+
+      patchFile(activeFileId, lo, removeLen, newBytes);
+
+      // Update selection to cover the new pasted range
+      selStart = lo;
+      selEnd = lo + newBytes.length - 1;
+      if (selEnd < selStart) selEnd = selStart; // Safety for 0-byte pastes
+
       refreshRows();
       updateStatus();
     }).catch(() => { });
