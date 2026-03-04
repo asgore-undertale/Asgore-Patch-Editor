@@ -231,7 +231,7 @@ function renderTreeNode(node, container, depth, pathPrefix) {
     for (const f of sortedFiles) {
         const fileEl = document.createElement('div');
         fileEl.className = 'file-tree-item' + (f.id === activeFileId ? ' active' : '');
-        fileEl.style.paddingLeft = (8 + depth * 14) + 'px';
+        fileEl.style.paddingLeft = (16 + depth * 14) + 'px'; // +16 for icon alignment without arrow
 
         const icon = document.createElement('span');
         icon.className = 'file-tree-file-icon';

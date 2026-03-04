@@ -382,13 +382,88 @@ function renderGroupsPanel() {
     const regexAdd = document.createElement('div');
     regexAdd.className = 'group-regex-add';
 
-    const rxFileSel = document.createElement('select');
-    rxFileSel.className = 'group-regex-input group-regex-multi';
-    rxFileSel.style.marginBottom = '4px';
-    rxFileSel.multiple = true;
-    rxFileSel.size = 3;
-    rxFileSel.appendChild(new Option('All Files', 'all'));
-    files.forEach(f => rxFileSel.appendChild(new Option(f.name, f.id)));
+    // Custom Checkbox List for Files
+    const rxFileWrap = document.createElement('div');
+    rxFileWrap.className = 'group-regex-multi-wrap';
+    rxFileWrap.style.zIndex = '100'; // ensure it's above other cards in the flow
+
+    const rxFileBtn = document.createElement('button');
+    rxFileBtn.className = 'group-regex-multi-btn';
+    rxFileBtn.type = 'button';
+    rxFileBtn.innerHTML = 'Select Files <span class="arrow">▾</span>';
+
+    const rxFileDrop = document.createElement('div');
+    rxFileDrop.className = 'group-regex-multi-drop';
+    rxFileDrop.style.display = 'none';
+
+    function addCheckOption(id, label, isChecked) {
+      const lbl = document.createElement('label');
+      lbl.className = 'group-regex-multi-opt';
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.value = id;
+      chk.checked = isChecked;
+
+      const txt = document.createElement('span');
+      txt.textContent = label;
+
+      lbl.appendChild(chk);
+      lbl.appendChild(txt);
+      rxFileDrop.appendChild(lbl);
+      return chk;
+    }
+
+    const allChk = addCheckOption('all', 'All Files', true);
+
+    // If 'All Files' is checked, uncheck others. If others checked, uncheck 'All Files'.
+    allChk.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        const others = rxFileDrop.querySelectorAll('input[type="checkbox"]:not([value="all"])');
+        others.forEach(c => c.checked = false);
+      }
+    });
+
+    files.forEach(f => {
+      const chk = addCheckOption(f.id, f.name, false);
+      chk.addEventListener('change', (e) => {
+        if (e.target.checked) allChk.checked = false;
+      });
+    });
+
+    rxFileBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isOpening = rxFileDrop.style.display === 'none';
+      rxFileDrop.style.display = isOpening ? 'block' : 'none';
+
+      if (isOpening) {
+        // Smart flip: if close to bottom of screen, show above
+        const rect = rxFileBtn.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < 180) { // dropdown is max ~150px
+          rxFileDrop.style.top = 'auto';
+          rxFileDrop.style.bottom = '100%';
+          rxFileDrop.style.marginTop = '0';
+          rxFileDrop.style.marginBottom = '4px';
+        } else {
+          rxFileDrop.style.top = '100%';
+          rxFileDrop.style.bottom = 'auto';
+          rxFileDrop.style.marginTop = '4px';
+          rxFileDrop.style.marginBottom = '0';
+        }
+      }
+      rxFileBtn.querySelector('.arrow').textContent = rxFileDrop.style.display === 'none' ? '▾' : '▴';
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('mousedown', (e) => {
+      if (!rxFileWrap.contains(e.target) && rxFileDrop.style.display === 'block') {
+        rxFileDrop.style.display = 'none';
+        rxFileBtn.querySelector('.arrow').textContent = '▾';
+      }
+    });
+
+    rxFileWrap.appendChild(rxFileBtn);
+    rxFileWrap.appendChild(rxFileDrop);
 
     const rxInput = document.createElement('input');
     rxInput.className = 'group-regex-input';
@@ -414,10 +489,24 @@ function renderGroupsPanel() {
       }
       try {
         new RegExp(pattern, flags);
-        const selectedOptions = Array.from(rxFileSel.selectedOptions).map(opt => opt.value);
-        const fileIds = selectedOptions.length > 0 ? selectedOptions : ['all'];
+
+        // Gather selected values from checkbox list
+        const checks = Array.from(rxFileDrop.querySelectorAll('input[type="checkbox"]:checked'));
+        let fileIds = checks.map(c => c.value);
+        if (fileIds.length === 0 || fileIds.includes('all')) {
+          fileIds = ['all'];
+        }
+
         g.regexes.push({ pattern, flags, fileIds });
         rxInput.value = '';
+
+        // Reset checkboxes
+        allChk.checked = true;
+        const others = rxFileDrop.querySelectorAll('input[type="checkbox"]:not([value="all"])');
+        others.forEach(c => c.checked = false);
+        rxFileDrop.style.display = 'none';
+        rxFileBtn.querySelector('.arrow').textContent = '▾';
+
         scheduleRecomputeRegex();
       } catch (err) {
         alert('Invalid regex: ' + err.message);
@@ -431,7 +520,7 @@ function renderGroupsPanel() {
       }
     });
 
-    regexAdd.appendChild(rxFileSel);
+    regexAdd.appendChild(rxFileWrap);
     regexAdd.appendChild(rxInput);
     regexAdd.appendChild(rxBtn);
     regexForm.appendChild(regexAdd);
