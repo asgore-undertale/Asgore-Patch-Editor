@@ -31,7 +31,8 @@
 
 /* Buttons */
 #toolbar button,
-#btn-welcome-open {
+#btn-welcome-open,
+#btn-welcome-folder {
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 500;
@@ -268,8 +269,14 @@
   font-size: 15px;
 }
 
-#btn-welcome-open {
+.welcome-buttons {
+  display: flex;
+  gap: 12px;
   margin-top: 8px;
+}
+
+#btn-welcome-open,
+#btn-welcome-folder {
   padding: 10px 24px;
   font-size: 14px;
   border-color: var(--accent);
@@ -278,7 +285,8 @@
   box-shadow: 0 0 20px var(--accent-dim);
 }
 
-#btn-welcome-open:hover {
+#btn-welcome-open:hover,
+#btn-welcome-folder:hover {
   background: var(--accent);
   color: var(--bg-body);
   box-shadow: 0 0 30px rgba(6, 214, 160, 0.35);

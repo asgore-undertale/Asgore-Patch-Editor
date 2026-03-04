@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/hex.css">
   <link rel="stylesheet" href="css/groups.css">
   <link rel="stylesheet" href="css/code.css">
+  <link rel="stylesheet" href="css/filetree.css">
   <!-- Prism.js Theme -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
 </head>
@@ -20,22 +21,11 @@
   <!-- ═══════ TOOLBAR ═══════ -->
   <header id="toolbar">
     <div class="toolbar-left">
-      <button id="btn-open" title="Open File (Ctrl+O)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        <span>Open</span>
-      </button>
-      <button id="btn-save" title="Save / Export File (Ctrl+S)" disabled>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        <span>Save</span>
-      </button>
-
-      <div class="toolbar-divider"></div>
-
-      <button id="btn-open-proj" title="Open Project (Load Groups & Scripts)" class="proj-btn">
+      <button id="btn-open-proj" title="Open Project (Load Groups &amp; Scripts)" class="proj-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         <span>Open Project</span>
       </button>
-      <button id="btn-save-proj" title="Save Project (Export Groups & Scripts)" class="proj-btn">
+      <button id="btn-save-proj" title="Save Project (Export Groups &amp; Scripts)" class="proj-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8l-6-6z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>
         <span>Save Project</span>
       </button>
@@ -74,7 +64,8 @@
         </select>
       </div>
     </div>
-    <input type="file" id="file-picker" hidden />
+    <input type="file" id="file-picker" multiple hidden />
+    <input type="file" id="folder-picker" webkitdirectory hidden />
     <input type="file" id="proj-picker" accept=".json" hidden />
   </header>
 
@@ -94,34 +85,60 @@
       </div>
       <h1>Asgore Patch Editor</h1>
       <p>Open any file to inspect and edit its raw bytes</p>
-      <button id="btn-welcome-open">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        Open a file
-      </button>
+      <div class="welcome-buttons">
+        <button id="btn-welcome-open">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Open a file
+        </button>
+        <button id="btn-welcome-folder">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Open a folder
+        </button>
+      </div>
       <span class="shortcut-hint">or press <kbd>Ctrl</kbd> + <kbd>O</kbd></span>
     </div>
   </main>
 
   <!-- ═══════ HEX EDITOR ═══════ -->
   <main id="hex-editor" class="hidden">
-    <!-- Column headers -->
-    <div id="hex-header">
-      <div class="col-offset">Offset</div>
-      <div class="col-hex">
-        <span>00</span><span>01</span><span>02</span><span>03</span>
-        <span>04</span><span>05</span><span>06</span><span>07</span>
-        <span class="hex-gap"></span>
-        <span>08</span><span>09</span><span>0A</span><span>0B</span>
-        <span>0C</span><span>0D</span><span>0E</span><span>0F</span>
-      </div>
-      <div class="col-ascii">Decoded ASCII</div>
-    </div>
     <!-- Editor body: hex scroll + code runner + groups panel -->
     <div id="editor-body">
-      <!-- Scrollable container -->
-      <div id="hex-scroll">
-        <div id="hex-spacer"></div>
-        <div id="hex-rows"></div>
+      <!-- File Tree Sidebar -->
+      <aside id="file-tree-panel">
+        <div class="file-tree-header">
+          <span class="file-tree-title">Files</span>
+          <div class="file-tree-actions">
+            <button id="btn-add-file" title="Add File">+ File</button>
+            <button id="btn-add-folder" title="Add Folder">+ Folder</button>
+            <button id="btn-save-file" title="Save active file">Save</button>
+          </div>
+        </div>
+        <div id="file-tree-list"></div>
+      </aside>
+
+      <!-- Splitter: File Tree | Hex -->
+      <div class="splitter-v" id="split-tree-hex"></div>
+
+      <!-- Hex View Wrapper -->
+      <div id="hex-view-wrap" style="flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative;">
+        <!-- Column headers -->
+        <div id="hex-header">
+          <div class="col-offset">Offset</div>
+          <div class="col-hex">
+            <span>00</span><span>01</span><span>02</span><span>03</span>
+            <span>04</span><span>05</span><span>06</span><span>07</span>
+            <span class="hex-gap"></span>
+            <span>08</span><span>09</span><span>0A</span><span>0B</span>
+            <span>0C</span><span>0D</span><span>0E</span><span>0F</span>
+          </div>
+          <div class="col-ascii">Decoded ASCII</div>
+        </div>
+
+        <!-- Scrollable container -->
+        <div id="hex-scroll">
+          <div id="hex-spacer"></div>
+          <div id="hex-rows"></div>
+        </div>
       </div>
       
       <!-- Splitter 1: Hex | Code Runner -->
@@ -140,9 +157,8 @@
           <div class="code-editor-wrap">
             <div class="editor-layered">
               <pre aria-hidden="true" class="language-javascript"><code class="language-javascript" id="code-overlay">
-// GROUPS[i] gives access to group 'i'. You can read .ranges or .regexRanges.
-// Use getString(start, end) to get the ASCII content of a range.
-// You can directly modify bytes via the CONTENT array!
+// GROUPS[i] gives access to group 'i'. Read .ranges or .regexRanges.
+// Use FILES array to access specific files (e.g. FILES[0].getString, FILES[0].CONTENT).
 if (GROUPS.length > 0) {
   const g = GROUPS[0];
   const allRanges = [...g.ranges, ...g.regexRanges];
@@ -151,37 +167,15 @@ if (GROUPS.length > 0) {
     print(`Group "${g.name}" has no matches.`);
   } else {
     allRanges.forEach((r, idx) => {
-      const text = getString(r.start, r.end);
-      print(`[0x${r.start.toString(16)} - ${(r.end).toString(16)}]: "${text}" -> Redacted`);
+      const file = FILES.find(f => f.id === r.fileId);
+      if (!file) return;
+
+      const text = file.getString(r.start, r.end);
+      print(`[${file.name}] 0x${r.start.toString(16)} - ${(r.end).toString(16)}: "${text}" -> Redacted`);
       
-      // Example Modification: Overwrite the matched bytes with asterisks '*' (0x2A)
+      // Example Modification: Overwrite matched bytes with '*' (0x2A)
       for (let i = r.start; i <= r.end; i++) {
-        CONTENT[i] = 0x2A; 
-      }
-    });
-    print("Check the Hex Editor, the modified bytes should now be red and display *!");
-  }
-} else {
-  print("No groups created yet. Create one and assign some bytes or write a regex pattern!");
-}</code></pre>
-              <textarea id="code-input" spellcheck="false" class="language-javascript">
-// GROUPS[i] gives access to group 'i'. You can read .ranges or .regexRanges.
-// Use getString(start, end) to get the ASCII content of a range.
-// You can directly modify bytes via the CONTENT array!
-if (GROUPS.length > 0) {
-  const g = GROUPS[0];
-  const allRanges = [...g.ranges, ...g.regexRanges];
-  
-  if (allRanges.length === 0) {
-    print(`Group "${g.name}" has no matches.`);
-  } else {
-    allRanges.forEach((r, idx) => {
-      const text = getString(r.start, r.end);
-      print(`[0x${r.start.toString(16)} - ${(r.end).toString(16)}]: "${text}" -> Redacted`);
-      
-      // Example Modification: Overwrite the matched bytes with asterisks '*' (0x2A)
-      for (let i = r.start; i <= r.end; i++) {
-        CONTENT[i] = 0x2A; 
+        file.CONTENT[i] = 0x2A; 
       }
     });
     print("Check the Hex Editor, the modified bytes should now be red and display *!");
@@ -189,7 +183,34 @@ if (GROUPS.length > 0) {
 } else {
   print("No groups created yet. Create one and assign some bytes or write a regex pattern!");
 }
-              </textarea>
+              </code></pre>
+              <textarea id="code-input" spellcheck="false" class="language-javascript">
+// GROUPS[i] gives access to group 'i'. Read .ranges or .regexRanges.
+// Use FILES array to access specific files (e.g. FILES[0].getString, FILES[0].CONTENT).
+if (GROUPS.length > 0) {
+  const g = GROUPS[0];
+  const allRanges = [...g.ranges, ...g.regexRanges];
+  
+  if (allRanges.length === 0) {
+    print(`Group "${g.name}" has no matches.`);
+  } else {
+    allRanges.forEach((r, idx) => {
+      const file = FILES.find(f => f.id === r.fileId);
+      if (!file) return;
+
+      const text = file.getString(r.start, r.end);
+      print(`[${file.name}] 0x${r.start.toString(16)} - ${(r.end).toString(16)}: "${text}" -> Redacted`);
+      
+      // Example Modification: Overwrite matched bytes with '*' (0x2A)
+      for (let i = r.start; i <= r.end; i++) {
+        file.CONTENT[i] = 0x2A; 
+      }
+    });
+    print("Check the Hex Editor, the modified bytes should now be red and display *!");
+  }
+} else {
+  print("No groups created yet. Create one and assign some bytes or write a regex pattern!");
+}</textarea>
             </div>
           </div>
           
@@ -243,6 +264,7 @@ if (GROUPS.length > 0) {
   <script src="js/hexView.js"></script>
   <script src="js/search.js"></script>
   <script src="js/codeRunner.js"></script>
+  <script src="js/fileTree.js"></script>
   <script src="js/layout.js"></script>
   <script src="js/main.js"></script>
 </body>
