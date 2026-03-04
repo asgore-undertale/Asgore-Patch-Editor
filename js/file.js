@@ -20,63 +20,81 @@ function saveFile() {
 }
 
 // ── Project Save/Load ──────────────────────────
-btnOpenProj.addEventListener('click', () => projPicker.click());
+const opProj = document.getElementById('btn-open-proj');
+if (opProj) {
+  opProj.addEventListener('click', () => {
+    const picker = document.getElementById('proj-picker');
+    if (picker) picker.click();
+  });
+}
 
-projPicker.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    try {
-      const text = ev.target.result;
-      const proj = JSON.parse(text);
-      if (proj.groups) {
-        groups = proj.groups;
-        // Ensure all ranges have a fileId (backward compat)
-        for (const g of groups) {
-          for (const r of g.ranges) {
-            if (!r.fileId && activeFileId) r.fileId = activeFileId;
+const pPickerEl = document.getElementById('proj-picker');
+if (pPickerEl) {
+  pPickerEl.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target.result;
+        const proj = JSON.parse(text);
+        if (proj.groups) {
+          groups = proj.groups;
+          // Ensure all ranges have a fileId (backward compat)
+          for (const g of groups) {
+            for (const r of g.ranges) {
+              if (!r.fileId && activeFileId) r.fileId = activeFileId;
+            }
+          }
+          if (groups.length > 0) {
+            nextGroupId = Math.max(...groups.map(g => g.id)) + 1;
           }
         }
-        if (groups.length > 0) {
-          nextGroupId = Math.max(...groups.map(g => g.id)) + 1;
+        if (proj.code !== undefined) {
+          codeInput.value = proj.code;
+          if (typeof updateSyntaxHighlighting === 'function') {
+            updateSyntaxHighlighting();
+          }
         }
-      }
-      if (proj.code !== undefined) {
-        codeInput.value = proj.code;
-        if (typeof updateSyntaxHighlighting === 'function') {
-          updateSyntaxHighlighting();
+        rebuildByteGroupColor();
+        scheduleRecomputeRegex();
+        renderGroupsPanel();
+        refreshRows();
+
+        // Switch UI to hex editor
+        if (welcomeScr && hexEditor) {
+          welcomeScr.classList.add('hidden');
+          hexEditor.classList.remove('hidden');
         }
+      } catch (err) {
+        alert("Failed to parse project file.\n\n" + err);
       }
-      rebuildByteGroupColor();
-      scheduleRecomputeRegex();
-      renderGroupsPanel();
-      refreshRows();
-    } catch (err) {
-      alert("Failed to parse project file.\n\n" + err);
-    }
-  };
-  reader.readAsText(file);
-  projPicker.value = '';
-});
+    };
+    reader.readAsText(file);
+    projPicker.value = '';
+  });
+}
 
-btnSaveProj.addEventListener('click', () => {
-  const projectData = {
-    groups: groups.map(g => ({
-      id: g.id,
-      name: g.name,
-      color: g.color,
-      ranges: g.ranges,
-      regexes: g.regexes || [],
-      regexRanges: []
-    })),
-    code: codeInput.value
-  };
+const svProj = document.getElementById('btn-save-proj');
+if (svProj) {
+  svProj.addEventListener('click', () => {
+    const projectData = {
+      groups: groups.map(g => ({
+        id: g.id,
+        name: g.name,
+        color: g.color,
+        ranges: g.ranges,
+        regexes: g.regexes || [],
+        regexRanges: []
+      })),
+      code: codeInput.value
+    };
 
-  const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'project.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-});
+    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'project.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+}

@@ -301,15 +301,17 @@ function renderGroupsPanel() {
         itemWrap.appendChild(item);
 
         // ASCII Preview
-        const maxLen = 24;
-        const len = end - start + 1;
-        const previewLen = Math.min(len, maxLen);
         let previewText = '';
-        for (let i = 0; i < previewLen; i++) {
-          const val = getByteAt(start + i);
-          previewText += isPrintable(val) ? String.fromCharCode(val) : '.';
+        if (dataView && (!g.ranges[idx].fileId || g.ranges[idx].fileId === activeFileId)) {
+          const maxLen = 24;
+          const len = end - start + 1;
+          const previewLen = Math.min(len, maxLen);
+          for (let i = 0; i < previewLen; i++) {
+            const val = getByteAt(start + i);
+            previewText += isPrintable(val) ? String.fromCharCode(val) : '.';
+          }
+          if (len > maxLen) previewText += '...';
         }
-        if (len > maxLen) previewText += '...';
 
         if (previewText.length > 0) {
           const previewEl = document.createElement('div');

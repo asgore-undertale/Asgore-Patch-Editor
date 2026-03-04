@@ -1,9 +1,17 @@
+window.addEventListener('DOMContentLoaded', () => {
+  // ── Wire welcome buttons ───────────────────────
+  const bwOpen = document.getElementById('btn-welcome-open');
+  const bwFolder = document.getElementById('btn-welcome-folder');
+  const fPicker = document.getElementById('file-picker');
+  const dPicker = document.getElementById('folder-picker');
 
-// ── Wire welcome buttons ───────────────────────
-const btnWelcomeFolder = document.getElementById('btn-welcome-folder');
-btnWelcome.addEventListener('click', () => filePicker.click());
-btnWelcomeFolder.addEventListener('click', () => folderPicker.click());
-
+  if (bwOpen && fPicker) {
+    bwOpen.addEventListener('click', () => fPicker.click());
+  }
+  if (bwFolder && dPicker) {
+    bwFolder.addEventListener('click', () => dPicker.click());
+  }
+});
 // ── Keyboard shortcuts ─────────────────────────
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
