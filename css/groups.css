@@ -18,6 +18,12 @@
   flex-shrink: 0;
 }
 
+.groups-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .groups-title {
   font-size: 12px;
   font-weight: 600;
@@ -122,6 +128,7 @@
   padding: 0;
   font-family: var(--font-ui);
   cursor: text;
+  width: 0;
 }
 
 .group-name:focus {
@@ -144,6 +151,24 @@
 .group-assign-btn:hover {
   background: rgba(105, 219, 124, 0.2);
   border-color: rgba(105, 219, 124, 0.4);
+}
+
+.group-xlsx-btn {
+  background: rgba(77, 171, 247, 0.1);
+  border: 1px solid rgba(77, 171, 247, 0.2);
+  color: #4dabf7;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.group-xlsx-btn:hover {
+  background: rgba(77, 171, 247, 0.2);
+  border-color: rgba(77, 171, 247, 0.4);
 }
 
 .group-del-btn {

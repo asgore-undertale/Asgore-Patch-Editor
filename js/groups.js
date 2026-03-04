@@ -149,14 +149,25 @@ function removeRangeFromGroup(groupId, rangeIdx) {
 const groupsList = document.getElementById('groups-list');
 const groupsEmpty = document.getElementById('groups-empty');
 const btnAddGroup = document.getElementById('btn-add-group');
+const btnExportAll = document.getElementById('btn-export-all');
+
+if (btnExportAll) {
+  btnExportAll.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    if (groups.length === 0) return;
+    groups.forEach(g => exportGroupToExcel(g));
+  });
+}
 
 function renderGroupsPanel() {
   groupsList.innerHTML = '';
   if (groups.length === 0) {
     groupsEmpty.style.display = '';
+    if (btnExportAll) btnExportAll.style.display = 'none';
     return;
   }
   groupsEmpty.style.display = 'none';
+  if (btnExportAll) btnExportAll.style.display = 'block';
 
   for (const g of groups) {
     const card = document.createElement('div');
@@ -219,9 +230,21 @@ function renderGroupsPanel() {
       deleteGroup(g.id);
     });
 
+    // Excel Export button
+    const xlsxBtn = document.createElement('button');
+    xlsxBtn.className = 'group-xlsx-btn';
+    xlsxBtn.textContent = 'XLSX';
+    xlsxBtn.title = 'Export this group to Excel (.xlsx)';
+    xlsxBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      exportGroupToExcel(g);
+    });
+
     head.appendChild(swatch);
     head.appendChild(nameInput);
     head.appendChild(assignBtn);
+    head.appendChild(xlsxBtn);
     head.appendChild(delBtn);
     card.appendChild(head);
 
@@ -647,3 +670,72 @@ btnAddGroup.addEventListener('mousedown', (e) => {
   createGroup(`Group ${num}`, color);
 });
 
+
+/**
+ * Exports a single group's matched ranges to an Excel file.
+ * Each file referenced by the group gets its own sheet.
+ */
+function exportGroupToExcel(g) {
+  if (typeof XLSX === 'undefined') {
+    alert("Excel library (SheetJS) is not loaded. Please check your internet connection.");
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+  const allRanges = [...g.ranges, ...g.regexRanges];
+
+  if (allRanges.length === 0) {
+    alert("This group has no ranges to export.");
+    return;
+  }
+
+  // Group by file
+  const fileMap = new Map();
+  allRanges.forEach(r => {
+    if (!fileMap.has(r.fileId)) fileMap.set(r.fileId, []);
+    fileMap.get(r.fileId).push(r);
+  });
+
+  fileMap.forEach((ranges, fileId) => {
+    const fileEntry = files.find(f => f.id === fileId);
+    const fileName = fileEntry ? fileEntry.name : `File_${fileId}`;
+
+    // Sort by offset
+    ranges.sort((a, b) => a.start - b.start);
+
+    const rowData = ranges.map(r => {
+      let matchStr = "";
+      if (fileEntry) {
+        // Extract the content from the buffer + modifications
+        const sub = new Uint8Array(r.end - r.start + 1);
+        for (let i = 0; i < sub.length; i++) {
+          const off = r.start + i;
+          sub[i] = fileEntry.mods.has(off) ? fileEntry.mods.get(off) : fileEntry.buffer[off];
+        }
+        matchStr = new TextDecoder().decode(sub);
+      }
+      return {
+        "Start Offset": `0x${formatOffset(r.start)}`,
+        "End Offset": `0x${formatOffset(r.end)}`,
+        "Size": r.end - r.start + 1,
+        "Match String": matchStr
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rowData);
+
+    // Auto-size columns slightly
+    ws['!cols'] = [
+      { wch: 15 }, // Start
+      { wch: 15 }, // End
+      { wch: 8 },  // Size
+      { wch: 50 }, // Match
+    ];
+
+    // Excel sheet name limit is 31 chars
+    const sheetName = fileName.replace(/[\\/?*[\]]/g, '_').substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  XLSX.writeFile(wb, `${g.name || 'Group'}_Export.xlsx`);
+}

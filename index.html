@@ -15,7 +15,9 @@
   <link rel="stylesheet" href="css/code.css">
   <link rel="stylesheet" href="css/filetree.css">
   <!-- Prism.js Theme -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <link href="lib/css/prism-tomorrow.min.css" rel="stylesheet" />
+  <!-- SheetJS for Excel Export -->
+  <script src="lib/js/xlsx.full.min.js"></script>
 </head>
 <body>
   <!-- ═══════ TOOLBAR ═══════ -->
@@ -230,9 +232,12 @@ if (GROUPS.length > 0) {
       <aside id="groups-panel">
         <div class="groups-header">
           <span class="groups-title">Byte Groups</span>
-          <button id="btn-add-group" title="New group">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
+          <div class="groups-header-actions">
+            <button id="btn-export-all" title="Export all groups to Excel" class="group-xlsx-btn">Export All</button>
+            <button id="btn-add-group" title="New group">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
         </div>
         <div id="groups-list"></div>
         <div id="groups-empty" class="groups-empty">
@@ -254,8 +259,8 @@ if (GROUPS.length > 0) {
     </div>
   </footer>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="lib/js/prism.min.js"></script>
+  <script src="lib/js/prism-javascript.min.js"></script>
   <script src="js/globals.js"></script>
   <script src="js/helpers.js"></script>
   <script src="js/utils.js"></script>
