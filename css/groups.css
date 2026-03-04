@@ -166,6 +166,17 @@
   white-space: nowrap;
 }
 
+#btn-import-xlsx {
+  background: rgba(105, 219, 124, 0.1);
+  border-color: rgba(105, 219, 124, 0.2);
+  color: #69db7c;
+}
+
+#btn-import-xlsx:hover {
+  background: rgba(105, 219, 124, 0.2);
+  border-color: rgba(105, 219, 124, 0.4);
+}
+
 .group-xlsx-btn:hover {
   background: rgba(77, 171, 247, 0.2);
   border-color: rgba(77, 171, 247, 0.4);

@@ -233,11 +233,14 @@ if (GROUPS.length > 0) {
         <div class="groups-header">
           <span class="groups-title">Byte Groups</span>
           <div class="groups-header-actions">
+            <button id="btn-import-xlsx" title="Import groups from Excel" class="group-xlsx-btn">Import</button>
             <button id="btn-export-all" title="Export all groups to Excel" class="group-xlsx-btn">Export All</button>
             <button id="btn-add-group" title="New group">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
           </div>
+          <input type="file" id="xlsx-import-input" accept=".xlsx" multiple hidden />
+        </div>
         </div>
         <div id="groups-list"></div>
         <div id="groups-empty" class="groups-empty">

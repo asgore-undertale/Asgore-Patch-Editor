@@ -150,6 +150,8 @@ const groupsList = document.getElementById('groups-list');
 const groupsEmpty = document.getElementById('groups-empty');
 const btnAddGroup = document.getElementById('btn-add-group');
 const btnExportAll = document.getElementById('btn-export-all');
+const btnImportXlsx = document.getElementById('btn-import-xlsx');
+const xlsxImportInput = document.getElementById('xlsx-import-input');
 
 if (btnExportAll) {
   btnExportAll.addEventListener('mousedown', (e) => {
@@ -159,11 +161,27 @@ if (btnExportAll) {
   });
 }
 
+if (btnImportXlsx && xlsxImportInput) {
+  btnImportXlsx.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    xlsxImportInput.click();
+  });
+
+  xlsxImportInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      await importGroupsFromExcel(files);
+      xlsxImportInput.value = ''; // Reset for next time
+    }
+  });
+}
+
 function renderGroupsPanel() {
   groupsList.innerHTML = '';
   if (groups.length === 0) {
     groupsEmpty.style.display = '';
     if (btnExportAll) btnExportAll.style.display = 'none';
+    // Import button stays visible so you can create groups via import
     return;
   }
   groupsEmpty.style.display = 'none';
@@ -717,7 +735,6 @@ function exportGroupToExcel(g) {
       return {
         "Start Offset": `0x${formatOffset(r.start)}`,
         "End Offset": `0x${formatOffset(r.end)}`,
-        "Size": r.end - r.start + 1,
         "Match String": matchStr
       };
     });
@@ -728,7 +745,6 @@ function exportGroupToExcel(g) {
     ws['!cols'] = [
       { wch: 15 }, // Start
       { wch: 15 }, // End
-      { wch: 8 },  // Size
       { wch: 50 }, // Match
     ];
 
@@ -738,4 +754,79 @@ function exportGroupToExcel(g) {
   });
 
   XLSX.writeFile(wb, `${g.name || 'Group'}_Export.xlsx`);
+}
+
+/**
+ * Imports multiple XLSX files to create or update groups.
+ */
+async function importGroupsFromExcel(fileList) {
+  if (typeof XLSX === 'undefined') {
+    alert("Excel library (SheetJS) is not loaded.");
+    return;
+  }
+
+  for (const file of fileList) {
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+
+      // Group name from filename (e.g., "MyGroup_Export.xlsx" -> "MyGroup")
+      let groupName = file.name.replace(/_Export\.xlsx$/i, '').replace(/\.xlsx$/i, '');
+
+      let g = groups.find(x => x.name.toLowerCase() === groupName.toLowerCase());
+      if (!g) {
+        // Create new group
+        const color = nextGroupColor();
+        g = { id: nextGroupId++, name: groupName, color, ranges: [], regexes: [], regexRanges: [] };
+        groups.push(g);
+      } else {
+        // Clear existing manual ranges if we want to overwrite, 
+        // but maybe the user wants to append? 
+        // Usually "update" implies merging or replacing. 
+        // Let's replace the manual ranges for clarity.
+        g.ranges = [];
+      }
+
+      // Each sheet is a file name
+      workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        // Find matching file in project
+        // Note: sheet names might be truncated or sanitized
+        const targetFile = files.find(f => {
+          const sanitized = f.name.replace(/[\\/?*[\]]/g, '_').substring(0, 31);
+          return sanitized.toLowerCase() === sheetName.toLowerCase();
+        }) || files.find(f => f.name.toLowerCase() === sheetName.toLowerCase());
+
+        if (!targetFile) {
+          console.warn(`File "${sheetName}" not found in current project.`);
+          return;
+        }
+
+        jsonData.forEach(row => {
+          const startVal = row["Start Offset"];
+          const endVal = row["End Offset"];
+
+          if (startVal !== undefined && endVal !== undefined) {
+            // Parse hex (e.g. "0x00000010" or "00000010")
+            const start = parseInt(String(startVal).replace(/^0x/i, ''), 16);
+            const end = parseInt(String(endVal).replace(/^0x/i, ''), 16);
+
+            if (!isNaN(start) && !isNaN(end)) {
+              g.ranges.push({ fileId: targetFile.id, start, end });
+            }
+          }
+        });
+      });
+
+    } catch (err) {
+      console.error("Error importing XLSX:", file.name, err);
+      alert(`Failed to import ${file.name}`);
+    }
+  }
+
+  rebuildByteGroupColor();
+  renderGroupsPanel();
+  refreshRows();
 }
