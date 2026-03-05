@@ -276,41 +276,6 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Paste data at selection
-  if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-    e.preventDefault();
-    if (!dataView || selStart < 0) return;
-    navigator.clipboard.readText().then((text) => {
-      if (!text) return;
-      const lo = Math.min(selStart, selEnd);
-      const hi = Math.max(selStart, selEnd);
-      const removeLen = hi - lo + 1;
-      let newBytes;
-
-      if (activePane === 'hex') {
-        const clean = text.replace(/[^0-9a-fA-F]/g, '');
-        if (clean.length === 0 || clean.length % 2 !== 0) return;
-        newBytes = new Uint8Array(clean.length / 2);
-        for (let i = 0; i < newBytes.length; i++) {
-          newBytes[i] = parseInt(clean.substr(i * 2, 2), 16);
-        }
-      } else {
-        newBytes = new TextEncoder().encode(text);
-      }
-
-      patchFile(activeFileId, lo, removeLen, newBytes);
-
-      // Update selection to cover the new pasted range
-      selStart = lo;
-      selEnd = lo + newBytes.length - 1;
-      if (selEnd < selStart) selEnd = selStart; // Safety for 0-byte pastes
-
-      refreshRows();
-      updateStatus();
-    }).catch(() => { });
-    return;
-  }
-
   // If focus is on an input, don't capture hex editing keys
   if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') return;
   if (!dataView || selStart < 0) return;
@@ -377,6 +342,41 @@ document.addEventListener('keydown', (e) => {
     refreshRows();
     updateStatus();
   }
+});
+
+document.addEventListener('paste', (e) => {
+  if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') return;
+  if (!dataView || selStart < 0) return;
+
+  const text = e.clipboardData.getData('text');
+  if (!text) return;
+
+  e.preventDefault();
+  const lo = Math.min(selStart, selEnd);
+  const hi = Math.max(selStart, selEnd);
+  const removeLen = hi - lo + 1;
+  let newBytes;
+
+  if (activePane === 'hex') {
+    const clean = text.replace(/[^0-9a-fA-F]/g, '');
+    if (clean.length === 0 || clean.length % 2 !== 0) return;
+    newBytes = new Uint8Array(clean.length / 2);
+    for (let i = 0; i < newBytes.length; i++) {
+      newBytes[i] = parseInt(clean.substr(i * 2, 2), 16);
+    }
+  } else {
+    newBytes = new TextEncoder().encode(text);
+  }
+
+  patchFile(activeFileId, lo, removeLen, newBytes);
+
+  // Update selection to cover the new pasted range
+  selStart = lo;
+  selEnd = lo + newBytes.length - 1;
+  if (selEnd < selStart) selEnd = selStart; // Safety for 0-byte pastes
+
+  refreshRows();
+  updateStatus();
 });
 
 // ── Status bar ─────────────────────────────────
