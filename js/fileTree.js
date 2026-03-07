@@ -285,28 +285,32 @@ function removeFileById(id) {
 }
 
 // ── Wire tree buttons ──────────────────────────
-btnAddFile.addEventListener('click', () => filePicker.click());
-btnAddFolder.addEventListener('click', () => folderPicker.click());
+if (btnAddFile) btnAddFile.addEventListener('click', () => filePicker.click());
+if (btnAddFolder) btnAddFolder.addEventListener('click', () => folderPicker.click());
 
-filePicker.addEventListener('change', (e) => {
-    const fileList = e.target.files;
-    if (!fileList.length) return;
-    for (const file of fileList) {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const id = addFile(new Uint8Array(reader.result), file.name, file.name);
-            if (files.length === 1) switchToFile(id);
-        };
-        reader.readAsArrayBuffer(file);
-    }
-    filePicker.value = '';
-});
+if (filePicker) {
+    filePicker.addEventListener('change', (e) => {
+        const fileList = e.target.files;
+        if (!fileList.length) return;
+        for (const file of fileList) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const id = addFile(new Uint8Array(reader.result), file.name, file.name);
+                if (files.length === 1) switchToFile(id);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        filePicker.value = '';
+    });
+}
 
-folderPicker.addEventListener('change', (e) => {
-    const fileList = e.target.files;
-    if (!fileList.length) return;
-    addFolder(fileList);
-    folderPicker.value = '';
-});
+if (folderPicker) {
+    folderPicker.addEventListener('change', (e) => {
+        const fileList = e.target.files;
+        if (!fileList.length) return;
+        addFolder(fileList);
+        folderPicker.value = '';
+    });
+}
 
-btnSaveFile.addEventListener('click', () => saveFile());
+if (btnSaveFile) btnSaveFile.addEventListener('click', () => saveFile());
