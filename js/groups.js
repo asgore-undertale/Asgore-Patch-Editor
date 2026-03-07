@@ -170,6 +170,10 @@ if (btnImportXlsx && xlsxImportInput) {
   xlsxImportInput.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 0) {
+      // Also load into viewer
+      if (typeof loadExcelToViewer === 'function') {
+        loadExcelToViewer(files[0]);
+      }
       await importGroupsFromExcel(files);
       xlsxImportInput.value = ''; // Reset for next time
     }
@@ -761,6 +765,66 @@ function exportGroupToExcel(g) {
 }
 
 /**
+ * Core logic to import groups from a SheetJS workbook object.
+ */
+function importFromWorkbook(workbook, groupName) {
+  let g = groups.find(x => x.name.toLowerCase() === groupName.toLowerCase());
+  if (!g) {
+    const color = nextGroupColor();
+    g = { id: nextGroupId++, name: groupName, color, ranges: [], regexes: [], regexRanges: [] };
+    groups.push(g);
+  } else {
+    g.ranges = [];
+  }
+
+  const allRows = [];
+  workbook.SheetNames.forEach(sheetName => {
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    const targetFile = files.find(f => {
+      const sanitized = f.name.replace(/[\\/?*[\]]/g, '_').substring(0, 31);
+      return sanitized.toLowerCase() === sheetName.toLowerCase();
+    }) || files.find(f => f.name.toLowerCase() === sheetName.toLowerCase());
+
+    if (targetFile) {
+      jsonData.forEach(row => {
+        allRows.push({ row, targetFile });
+      });
+    }
+  });
+
+  allRows.sort((a, b) => {
+    const startA = parseInt(String(a.row["Start Offset"] || 0).replace(/^0x/i, ''), 16);
+    const startB = parseInt(String(b.row["Start Offset"] || 0).replace(/^0x/i, ''), 16);
+    return startB - startA;
+  });
+
+  allRows.forEach(({ row, targetFile }) => {
+    const startVal = row["Start Offset"];
+    const endVal = row["End Offset"];
+
+    if (startVal !== undefined && endVal !== undefined) {
+      const start = parseInt(String(startVal).replace(/^0x/i, ''), 16);
+      const end = parseInt(String(endVal).replace(/^0x/i, ''), 16);
+
+      if (!isNaN(start) && !isNaN(end)) {
+        g.ranges.push({ fileId: targetFile.id, start, end });
+        const replacement = row["Replacement String"];
+        if (replacement !== undefined && replacement !== null && String(replacement).length > 0) {
+          const encoder = new TextEncoder();
+          const bytes = encoder.encode(String(replacement));
+          patchFile(targetFile.id, start, (end - start + 1), bytes);
+        }
+      }
+    }
+  });
+
+  rebuildByteGroupColor();
+  renderGroupsPanel();
+  if (typeof refreshRows === 'function') refreshRows();
+}
+
+/**
  * Imports multiple XLSX files to create or update groups.
  */
 async function importGroupsFromExcel(fileList) {
@@ -773,80 +837,11 @@ async function importGroupsFromExcel(fileList) {
     try {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
-
-      // Group name from filename (e.g., "MyGroup_Export.xlsx" -> "MyGroup")
-      let groupName = file.name.replace(/_Export\.xlsx$/i, '').replace(/\.xlsx$/i, '');
-
-      let g = groups.find(x => x.name.toLowerCase() === groupName.toLowerCase());
-      if (!g) {
-        // Create new group
-        const color = nextGroupColor();
-        g = { id: nextGroupId++, name: groupName, color, ranges: [], regexes: [], regexRanges: [] };
-        groups.push(g);
-      } else {
-        // Clear existing manual ranges if we want to overwrite, 
-        // but maybe the user wants to append? 
-        // Usually "update" implies merging or replacing. 
-        // Let's replace the manual ranges for clarity.
-        g.ranges = [];
-      }
-
-      // Collect all rows from all sheets first
-      const allRows = [];
-      workbook.SheetNames.forEach(sheetName => {
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        const targetFile = files.find(f => {
-          const sanitized = f.name.replace(/[\\/?*[\]]/g, '_').substring(0, 31);
-          return sanitized.toLowerCase() === sheetName.toLowerCase();
-        }) || files.find(f => f.name.toLowerCase() === sheetName.toLowerCase());
-
-        if (targetFile) {
-          jsonData.forEach(row => {
-            allRows.push({ row, targetFile });
-          });
-        } else {
-          console.warn(`File "${sheetName}" not found in current project.`);
-        }
-      });
-
-      // Sort all patches and ranges by offset DESCENDING
-      // This is crucial: patching from bottom to top means offsets at the top
-      // of the file remain stable while we work.
-      allRows.sort((a, b) => {
-        const startA = parseInt(String(a.row["Start Offset"]).replace(/^0x/i, ''), 16);
-        const startB = parseInt(String(b.row["Start Offset"]).replace(/^0x/i, ''), 16);
-        return startB - startA;
-      });
-
-      allRows.forEach(({ row, targetFile }) => {
-        const startVal = row["Start Offset"];
-        const endVal = row["End Offset"];
-
-        if (startVal !== undefined && endVal !== undefined) {
-          const start = parseInt(String(startVal).replace(/^0x/i, ''), 16);
-          const end = parseInt(String(endVal).replace(/^0x/i, ''), 16);
-
-          if (!isNaN(start) && !isNaN(end)) {
-            g.ranges.push({ fileId: targetFile.id, start, end });
-
-            // Apply Patching if Replacement String is provided
-            const replacement = row["Replacement String"];
-            if (replacement !== undefined && replacement !== null && String(replacement).length > 0) {
-              const encoder = new TextEncoder();
-              const bytes = encoder.encode(String(replacement));
-              patchFile(targetFile.id, start, (end - start + 1), bytes);
-            }
-          }
-        }
-      });
+      const groupName = file.name.replace(/_Export\.xlsx$/i, '').replace(/\.xlsx$/i, '');
+      importFromWorkbook(workbook, groupName);
     } catch (err) {
       console.error("Error importing XLSX:", file.name, err);
       alert(`Failed to import ${file.name}`);
     }
   }
-
-  rebuildByteGroupColor();
-  renderGroupsPanel();
-  refreshRows();
 }

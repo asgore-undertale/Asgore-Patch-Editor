@@ -30,6 +30,11 @@ const statusPos = $('#status-position');
 const statusVal = $('#status-value');
 const statusMod = $('#status-modified');
 
+const fileTreePanel = $('#file-tree-panel');
+const excelViewerPanel = $('#excel-viewer-panel');
+const codeRunnerPanel = $('#code-runner-panel');
+const groupsPanel = $('#groups-panel');
+
 // ── Multi-File Store ──────────────────────────
 // Each entry: { id, name, path, buffer, dataView, mods: Map }
 let files = [];

@@ -1,9 +1,8 @@
 
 // ── File Tree ──────────────────────────────────
-const fileTreePanel = $('#file-tree-panel');
 const fileTreeList = $('#file-tree-list');
-const btnAddFile = $('#btn-add-file');
-const btnAddFolder = $('#btn-add-folder');
+const btnAddFile = $('#btn-open-file');
+const btnAddFolder = $('#btn-open-folder');
 const btnSaveFile = $('#btn-save-file');
 
 // ── Add a single file to the store ─────────────

@@ -2,7 +2,7 @@
 #code-runner-panel {
   display: flex;
   flex-direction: column;
-  width: 600px;
+  width: 400px;
   /* Default width */
   flex-shrink: 0;
   border-left: 1px solid rgba(255, 255, 255, 0.04);
@@ -58,7 +58,6 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
-  margin-left: 6px;
   font-family: var(--font-ui);
 }
 
@@ -206,6 +205,3 @@
   background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
 }
-
-
-

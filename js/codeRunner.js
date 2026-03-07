@@ -1,6 +1,5 @@
 
 // ── Code Runner Panel ──────────────────────────
-const codeRunnerPanel = document.getElementById('code-runner-panel');
 const btnToggleCode = document.getElementById('btn-toggle-code');
 const btnRunCode = document.getElementById('btn-run-code');
 codeInput = document.getElementById('code-input');
@@ -105,10 +104,30 @@ function runUserCode() {
     };
   });
 
+  // Prepare XLS payload (renamed from EXCEL as requested)
+  let xlsPayload = {
+    workbook: null,
+    sheetNames: [],
+    activeSheet: null,
+    // Helper to get data for a specific sheet
+    getSheet: (name) => {
+      if (!currentExcelWorkbook) return [];
+      const sheetName = name || (typeof currentSheetName !== 'undefined' ? currentSheetName : currentExcelWorkbook.SheetNames[0]);
+      const ws = currentExcelWorkbook.Sheets[sheetName];
+      return ws ? XLSX.utils.sheet_to_json(ws) : [];
+    }
+  };
+
+  if (typeof currentExcelWorkbook !== 'undefined' && currentExcelWorkbook) {
+    xlsPayload.workbook = currentExcelWorkbook;
+    xlsPayload.sheetNames = currentExcelWorkbook.SheetNames;
+    xlsPayload.activeSheet = typeof currentSheetName !== 'undefined' ? currentSheetName : currentExcelWorkbook.SheetNames[0];
+  }
+
   try {
     // Execute via new Function to keep strict scope
-    const fn = new Function('GROUPS', 'print', 'getString', 'CONTENT', 'FILES', code);
-    fn(groupsPayload, print, getString, CONTENT, filesPayload);
+    const fn = new Function('GROUPS', 'print', 'getString', 'CONTENT', 'FILES', 'XLS', code);
+    fn(groupsPayload, print, getString, CONTENT, filesPayload, xlsPayload);
 
     // In case CONTENT was modified (in any file), update UI
     if (files.some(f => f.mods.size > 0)) {

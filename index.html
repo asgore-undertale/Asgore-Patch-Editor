@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="css/groups.css">
   <link rel="stylesheet" href="css/code.css">
   <link rel="stylesheet" href="css/filetree.css">
+  <link rel="stylesheet" href="css/excel.css">
   <!-- Prism.js Theme -->
   <link href="lib/css/prism-tomorrow.min.css" rel="stylesheet" />
   <!-- SheetJS for Excel Export -->
@@ -110,9 +111,10 @@
         <div class="file-tree-header">
           <span class="file-tree-title">Files</span>
           <div class="file-tree-actions">
-            <button id="btn-add-file" title="Add File">+ File</button>
-            <button id="btn-add-folder" title="Add Folder">+ Folder</button>
+            <button id="btn-open-file" title="Open hex file">Hex</button>
+            <button id="btn-open-folder" title="Open folder">Folder</button>
             <button id="btn-save-file" title="Save active file">Save</button>
+            <button id="btn-toggle-tree" title="Toggle File Tree" class="panel-toggle-btn">◀</button>
           </div>
         </div>
         <div id="file-tree-list"></div>
@@ -143,16 +145,43 @@
         </div>
       </div>
       
-      <!-- Splitter 1: Hex | Code Runner -->
-      <div class="splitter-v" id="split-hex-code"></div>
+      <!-- Splitter 1: Hex | Excel Viewer -->
+      <div class="splitter-v" id="split-hex-excel"></div>
+
+      <!-- ═══════ EXCEL VIEWER PANEL ═══════ -->
+      <div id="excel-viewer-panel" style="width: 300px;">
+        <div class="excel-header">
+          <div class="excel-header-left">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span class="excel-title">Excel Viewer</span>
+          </div>
+          <div class="excel-header-actions">
+            <button id="btn-excel-open" title="Open Excel file" class="excel-header-btn">Open File</button>
+            <button id="btn-toggle-excel" title="Toggle Excel Viewer" class="panel-toggle-btn">◀</button>
+            <input type="file" id="excel-file-input" accept=".xlsx,.xls,.xlsm" hidden />
+          </div>
+        </div>
+        <div class="excel-body">
+          <select id="excel-sheet-select" class="excel-sheet-select"></select>
+          <div id="excel-table-container">
+            <div class="excel-placeholder">
+              <p>No Excel file loaded.</p>
+              <p>Use the <strong>Import</strong> button in Byte Groups to load a file.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Splitter 2: Excel | Code Runner -->
+      <div class="splitter-v" id="split-excel-code"></div>
       
       <!-- ═══════ CODE RUNNER PANEL (Middle) ═══════ -->
       <div id="code-runner-panel">
         <div class="code-runner-header">
           <span class="code-title">Script Runner</span>
-          <div>
+          <div style="display: flex; gap: 6px;">
             <button id="btn-run-code" title="Execute script (Ctrl+Enter)">Execute</button>
-            <button id="btn-toggle-code" title="Toggle Code Panel">▶</button>
+            <button id="btn-toggle-code" title="Toggle Code Panel" class="panel-toggle-btn">▶</button>
           </div>
         </div>
         <div class="code-runner-body">
@@ -212,7 +241,28 @@ if (GROUPS.length > 0) {
   }
 } else {
   print("No groups created yet. Create one and assign some bytes or write a regex pattern!");
-}</textarea>
+}
+
+// Asgore Script Runner
+// Use XLS.sheetNames to loop through all sheets
+// Use XLS.getSheet(name) to get data rows
+
+if (XLS.sheetNames.length > 0) {
+  print("Found", XLS.sheetNames.length, "sheets.");
+  
+  XLS.sheetNames.forEach(name => {
+    print("--- Sheet:", name, "---");
+    const data = XLS.getSheet(name);
+    
+    // Example: Only print first 2 rows of each sheet
+    data.slice(0, 2).forEach((row, i) => {
+      print(`Row ${i}:`, JSON.stringify(row));
+    });
+  });
+} else {
+  print("No Excel file loaded.");
+}
+</textarea>
             </div>
           </div>
           
@@ -238,6 +288,7 @@ if (GROUPS.length > 0) {
             <button id="btn-add-group" title="New group">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
+            <button id="btn-toggle-groups" title="Toggle Groups Panel" class="panel-toggle-btn">▶</button>
           </div>
           <input type="file" id="xlsx-import-input" accept=".xlsx" multiple hidden />
         </div>
@@ -269,6 +320,7 @@ if (GROUPS.length > 0) {
   <script src="js/file.js"></script>
   <script src="js/groups.js"></script>
   <script src="js/hexView.js"></script>
+  <script src="js/excelViewer.js"></script>
   <script src="js/search.js"></script>
   <script src="js/codeRunner.js"></script>
   <script src="js/fileTree.js"></script>

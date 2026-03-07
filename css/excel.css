@@ -1,0 +1,204 @@
+/* ══════════════════════════════════════════════════
+   EXCEL VIEWER
+   ══════════════════════════════════════════════════ */
+#excel-viewer-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-left: 1px solid rgba(255, 255, 255, 0.04);
+    background: var(--bg-surface);
+    flex-shrink: 0;
+    transition: width 0.3s ease;
+}
+
+#excel-viewer-panel.collapsed {
+    width: 32px !important;
+    min-width: 32px !important;
+}
+
+#excel-viewer-panel.collapsed .excel-title,
+#excel-viewer-panel.collapsed .excel-body,
+#excel-viewer-panel.collapsed .excel-header-actions button:not(#btn-toggle-excel) {
+    display: none;
+}
+
+#excel-viewer-panel.collapsed .excel-header {
+    padding: 8px 0;
+    justify-content: center;
+}
+
+.excel-header {
+    height: 36px;
+    padding: 0 12px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.excel-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+}
+
+.excel-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 8px;
+}
+
+.excel-header-btn {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--bg-elevated);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.excel-header-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.excel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.excel-import-btn {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.excel-import-btn:hover {
+    background: var(--accent);
+    color: var(--bg-body);
+}
+
+.excel-body {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg-body);
+}
+
+.excel-sheet-select {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 10;
+    font-size: 11px;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 3px 8px;
+    outline: none;
+    cursor: pointer;
+    max-width: 180px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+}
+
+.excel-sheet-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+#btn-excel-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+#btn-excel-close:hover {
+    color: #ff6b6b;
+}
+
+.excel-body {
+    flex: 1;
+    overflow: auto;
+    background: #1e1e1e;
+    position: relative;
+}
+
+#excel-table-container {
+    min-width: 100%;
+}
+
+.excel-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--text-muted);
+    width: 80%;
+}
+
+.excel-placeholder p {
+    font-size: 12px;
+    margin: 4px 0;
+}
+
+/* Table Styles */
+.excel-table {
+    border-collapse: collapse;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    color: var(--text-secondary);
+    table-layout: auto;
+    width: max-content;
+}
+
+.excel-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-elevated);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    z-index: 5;
+}
+
+.excel-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    border-right: 1px solid rgba(255, 255, 255, 0.03);
+    white-space: nowrap;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.excel-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-primary);
+}

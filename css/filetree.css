@@ -1,4 +1,3 @@
-/* ── File Tree Panel ──────────────────────────── */
 #file-tree-panel {
     width: 220px;
     flex-shrink: 0;
@@ -7,6 +6,23 @@
     background: var(--bg-surface);
     border-right: 1px solid rgba(255, 255, 255, 0.06);
     overflow: hidden;
+    transition: width 0.3s ease;
+}
+
+#file-tree-panel.collapsed {
+    width: 32px !important;
+    min-width: 32px !important;
+}
+
+#file-tree-panel.collapsed .file-tree-title,
+#file-tree-panel.collapsed #file-tree-list,
+#file-tree-panel.collapsed .file-tree-actions button:not(#btn-toggle-tree) {
+    display: none;
+}
+
+#file-tree-panel.collapsed .file-tree-header {
+    padding: 8px 0;
+    justify-content: center;
 }
 
 .file-tree-header {
