@@ -60,6 +60,10 @@ let mods = new Map();
 // ── Global references to access later ──────────
 let codeInput; // assigned later in the file
 
+// Scripts state: { id, name, code }[]
+let scripts = [];
+let activeScriptId = null;
+
 // Search state
 let matchOffsets = [];
 let matchLengths = [];

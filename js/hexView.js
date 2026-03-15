@@ -1,6 +1,7 @@
 
 // ── Virtualised rendering ──────────────────────
 function renderVisibleRows() {
+  if (!dataView) return;
   const scrollTop = hexScroll.scrollTop;
   const viewH = hexScroll.clientHeight;
 
@@ -72,6 +73,7 @@ function createRowElement() {
 }
 
 function getByteAt(off) {
+  if (!dataView) return 0;
   if (mods.has(off)) return mods.get(off);
   return dataView[off];
 }
@@ -174,6 +176,7 @@ function isInSelection(off) {
 
 // Force re-render all visible rows
 function refreshRows() {
+  if (!dataView) return;
   firstVisRow = -1;
   lastVisRow = -1;
   renderVisibleRows();

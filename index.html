@@ -111,7 +111,7 @@
         <div class="file-tree-header">
           <span class="file-tree-title">Files</span>
           <div class="file-tree-actions">
-            <button id="btn-open-file" title="Open hex file">Hex</button>
+            <button id="btn-open-file" title="Open file">+ File</button>
             <button id="btn-open-folder" title="Open folder">Folder</button>
             <button id="btn-save-file" title="Save active file">Save</button>
             <button id="btn-toggle-tree" title="Toggle File Tree" class="panel-toggle-btn">◀</button>
@@ -185,6 +185,10 @@
           </div>
         </div>
         <div class="code-runner-body">
+          <div class="code-tabs-bar" id="code-tabs-bar">
+            <!-- Tabs injected by JS -->
+            <button class="btn-add-script" id="btn-add-script" title="New Script">+</button>
+          </div>
           <div class="code-editor-wrap">
             <div class="editor-layered">
               <pre aria-hidden="true" class="language-javascript"><code class="language-javascript" id="code-overlay">

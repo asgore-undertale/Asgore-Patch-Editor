@@ -87,19 +87,21 @@ function patchFile(fileId, offset, removeLen, newBytes) {
   if (fileId === activeFileId) {
     dataView = targetFile.dataView;
     fileBuffer = targetFile.buffer;
-    totalRows = Math.ceil(dataView.length / BYTES_PER_ROW);
+    if (dataView) {
+      totalRows = Math.ceil(dataView.length / BYTES_PER_ROW);
 
-    const fSizeEl = document.getElementById('file-size');
-    if (fSizeEl) fSizeEl.textContent = formatSize(dataView.length);
+      const fSizeEl = document.getElementById('file-size');
+      if (fSizeEl) fSizeEl.textContent = formatSize(dataView.length);
 
-    const hSpacer = document.getElementById('hex-spacer');
-    if (hSpacer) hSpacer.style.height = (totalRows * ROW_HEIGHT) + 'px';
+      const hSpacer = document.getElementById('hex-spacer');
+      if (hSpacer) hSpacer.style.height = (totalRows * ROW_HEIGHT) + 'px';
 
-    if (mods.size > 0) statusMod.classList.remove('hidden');
-    else statusMod.classList.add('hidden');
+      if (mods.size > 0) statusMod.classList.remove('hidden');
+      else statusMod.classList.add('hidden');
 
-    if (typeof scheduleRecomputeRegex === 'function') scheduleRecomputeRegex();
-    if (typeof rebuildByteGroupColor === 'function') rebuildByteGroupColor();
+      if (typeof scheduleRecomputeRegex === 'function') scheduleRecomputeRegex();
+      if (typeof rebuildByteGroupColor === 'function') rebuildByteGroupColor();
+    }
   }
 }
 

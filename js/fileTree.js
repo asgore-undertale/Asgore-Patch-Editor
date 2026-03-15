@@ -37,7 +37,17 @@ function addFile(buffer, name, path) {
         path: filePath,
         buffer: new Uint8Array(buffer),
         dataView: new Uint8Array(buffer),
-        mods: new Map()
+        mods: new Map(),
+        getString(start, end) {
+            let s = '';
+            // If this is the active file, use the global 'mods' map which has latest edits
+            const fMods = (typeof activeFileId !== 'undefined' && activeFileId === this.id) ? mods : this.mods;
+            for (let i = start; i <= end && i < this.dataView.length; i++) {
+                const val = fMods.has(i) ? fMods.get(i) : this.dataView[i];
+                s += (val < 32 || val > 126) ? '.' : String.fromCharCode(val);
+            }
+            return s;
+        }
     };
     files.push(entry);
     renderFileTree();

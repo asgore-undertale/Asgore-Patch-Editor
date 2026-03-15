@@ -195,12 +195,25 @@ function renderGroupsPanel() {
     const card = document.createElement('div');
     card.className = 'group-card';
     card.dataset.id = g.id;
+    if (g.collapsed) card.classList.add('collapsed');
 
     // Header row
     const head = document.createElement('div');
     head.className = 'group-card-head';
 
-    // Color swatch (click to change color)
+    const toggle = document.createElement('div');
+    toggle.className = 'group-collapse-toggle';
+    toggle.textContent = '▼';
+    head.appendChild(toggle);
+
+    head.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.group-name') || e.target.closest('.group-swatch') || e.target.closest('button')) return;
+      e.preventDefault();
+      g.collapsed = !g.collapsed;
+      renderGroupsPanel();
+    });
+
+    // Color swatch
     const swatch = document.createElement('div');
     swatch.className = 'group-swatch';
     swatch.style.background = g.color;
@@ -222,6 +235,7 @@ function renderGroupsPanel() {
       picker.click();
       picker.addEventListener('change', () => picker.remove());
     });
+    head.appendChild(swatch);
 
     // Name input
     const nameInput = document.createElement('input');
@@ -230,6 +244,7 @@ function renderGroupsPanel() {
     nameInput.value = g.name;
     nameInput.addEventListener('change', () => { g.name = nameInput.value; });
     nameInput.addEventListener('mousedown', e => e.stopPropagation());
+    head.appendChild(nameInput);
 
     // Assign button
     const assignBtn = document.createElement('button');
@@ -240,17 +255,7 @@ function renderGroupsPanel() {
       e.preventDefault();
       assignSelectionToGroup(g.id);
     });
-
-    // Delete group button
-    const delBtn = document.createElement('button');
-    delBtn.className = 'group-del-btn';
-    delBtn.textContent = '×';
-    delBtn.title = 'Delete group';
-    delBtn.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      deleteGroup(g.id);
-    });
+    head.appendChild(assignBtn);
 
     // Excel Export button
     const xlsxBtn = document.createElement('button');
@@ -262,74 +267,66 @@ function renderGroupsPanel() {
       e.stopPropagation();
       exportGroupToExcel(g);
     });
-
-    head.appendChild(swatch);
-    head.appendChild(nameInput);
-    head.appendChild(assignBtn);
     head.appendChild(xlsxBtn);
+
+    // Delete group button
+    const delBtn = document.createElement('button');
+    delBtn.className = 'group-del-btn';
+    delBtn.textContent = '×';
+    delBtn.title = 'Delete group';
+    delBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteGroup(g.id);
+    });
     head.appendChild(delBtn);
+
     card.appendChild(head);
+
+    // Card Body (Collapsible)
+    const body = document.createElement('div');
+    body.className = 'group-card-body';
+    card.appendChild(body);
 
     // Ranges list
     if (g.ranges.length > 0) {
       const rangesDiv = document.createElement('div');
       rangesDiv.className = 'group-ranges';
-      g.ranges.forEach(({ start, end }, idx) => {
+      g.ranges.forEach(({ start, end, fileId }, idx) => {
         const itemWrap = document.createElement('div');
         itemWrap.className = 'group-range-wrap';
 
-        const item = document.createElement('div');
-        item.className = 'group-range-item';
-        let fName = 'Unknown File';
-        if (g.ranges[idx].fileId) {
-          const f = files.find(x => x.id === g.ranges[idx].fileId);
-          if (f) fName = f.name;
-        }
+        const line = document.createElement('div');
+        line.className = 'group-range-item';
 
-        const label = document.createElement('span');
-        const offsetStr = start === end
-          ? `0x${formatOffset(start)}`
-          : `0x${formatOffset(start)}–0x${formatOffset(end)}`;
-        label.textContent = `${fName} [${offsetStr}]`;
+        const file = files.find(f => f.id === fileId);
+        const fileNamePrefix = file ? `[${file.name}] ` : '';
+        line.textContent = `${fileNamePrefix}0x${start.toString(16)} - 0x${end.toString(16)}`;
 
-        const rdel = document.createElement('button');
-        rdel.className = 'group-range-del';
-        rdel.textContent = '×';
-        rdel.title = 'Remove range';
-        rdel.addEventListener('mousedown', (e) => {
+        const delRange = document.createElement('button');
+        delRange.className = 'group-range-del';
+        delRange.textContent = '×';
+        delRange.addEventListener('mousedown', (e) => {
           e.preventDefault();
+          e.stopPropagation();
           removeRangeFromGroup(g.id, idx);
         });
-        item.appendChild(label);
-        item.appendChild(rdel);
-        itemWrap.appendChild(item);
+        line.appendChild(delRange);
+        itemWrap.appendChild(line);
 
-        // ASCII Preview
-        let previewText = '';
-        if (dataView && (!g.ranges[idx].fileId || g.ranges[idx].fileId === activeFileId)) {
-          const maxLen = 24;
-          const len = end - start + 1;
-          const previewLen = Math.min(len, maxLen);
-          for (let i = 0; i < previewLen; i++) {
-            const val = getByteAt(start + i);
-            previewText += isPrintable(val) ? String.fromCharCode(val) : '.';
-          }
-          if (len > maxLen) previewText += '...';
+        // Preview snippet
+        const preview = document.createElement('div');
+        preview.className = 'group-range-preview';
+        if (file) {
+          preview.textContent = file.getString(start, end);
         }
-
-        if (previewText.length > 0) {
-          const previewEl = document.createElement('div');
-          previewEl.className = 'group-range-preview';
-          previewEl.textContent = previewText;
-          itemWrap.appendChild(previewEl);
-        }
-
+        itemWrap.appendChild(preview);
         rangesDiv.appendChild(itemWrap);
       });
-      card.appendChild(rangesDiv);
+      body.appendChild(rangesDiv);
     }
 
-    // ── Existing regex list ──────────────────────
+    // Regex section
     const regexSec = document.createElement('div');
     regexSec.className = 'group-regex-section';
 
@@ -344,344 +341,54 @@ function renderGroupsPanel() {
       labelInput.style.color = 'var(--accent)';
       labelInput.style.fontFamily = 'var(--font-mono)';
       labelInput.value = `/${rx.pattern}/${rx.flags}`;
-      labelInput.title = "Click to edit pattern";
-
       labelInput.addEventListener('mousedown', e => e.stopPropagation());
-      labelInput.addEventListener('keydown', e => e.stopPropagation());
-      labelInput.addEventListener('keyup', e => e.stopPropagation());
       labelInput.addEventListener('change', () => {
         const val = labelInput.value.trim();
-        let pattern = val;
-        let flags = 'g';
+        let pattern = val, flags = 'g';
         const m = val.match(/^\/(.+)\/([a-z]*)$/);
-        if (m) {
-          pattern = m[1];
-          flags = m[2];
-        }
+        if (m) { pattern = m[1]; flags = m[2]; }
         try {
           new RegExp(pattern, flags);
           g.regexes[idx] = { pattern, flags, fileIds: rx.fileIds };
           scheduleRecomputeRegex();
-        } catch (err) {
-          alert('Invalid regex: ' + err.message);
-          labelInput.value = `/${rx.pattern}/${rx.flags}`;
-        }
+        } catch (err) { alert('Invalid regex: ' + err.message); }
       });
 
-      const fileLabel = document.createElement('span');
-      fileLabel.className = 'group-range-preview';
-      fileLabel.style.marginLeft = '4px';
-      if (rx.fileIds && !rx.fileIds.includes('all')) {
-        const names = rx.fileIds.map(id => {
-          const f = files.find(x => x.id == id);
-          return f ? f.name : 'Unknown';
-        });
-        fileLabel.textContent = `[${names.join(', ')}]`;
-      } else {
-        fileLabel.textContent = '[All Files]';
-      }
-
-      const rdel = document.createElement('button');
-      rdel.className = 'group-range-del';
-      rdel.textContent = '×';
-      rdel.title = 'Remove regex';
-      rdel.addEventListener('mousedown', (e) => {
+      const delRx = document.createElement('button');
+      delRx.className = 'group-range-del';
+      delRx.textContent = '×';
+      delRx.addEventListener('mousedown', (e) => {
         e.preventDefault();
         g.regexes.splice(idx, 1);
         scheduleRecomputeRegex();
       });
 
       item.appendChild(labelInput);
-      item.appendChild(fileLabel);
-      item.appendChild(rdel);
+      item.appendChild(delRx);
       regexList.appendChild(item);
     });
     if (g.regexes.length > 0) regexSec.appendChild(regexList);
 
-    // ── Unified "+" Add Section ──────────────────
+    // Add Section
     const addSection = document.createElement('div');
     addSection.className = 'group-add-section';
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'group-add-toggle';
+    toggleBtn.textContent = '+';
+    addSection.appendChild(toggleBtn);
 
-    // The form container (hidden by default)
     const addForm = document.createElement('div');
     addForm.className = 'group-add-form';
     addForm.style.display = 'none';
 
-    // Mode tabs: Regex | Offset
-    const modeTabs = document.createElement('div');
-    modeTabs.className = 'group-add-tabs';
-
-    const tabRegex = document.createElement('button');
-    tabRegex.className = 'group-add-tab active';
-    tabRegex.textContent = 'Regex';
-
-    const tabOffset = document.createElement('button');
-    tabOffset.className = 'group-add-tab';
-    tabOffset.textContent = 'Offset Range';
-
-    modeTabs.appendChild(tabRegex);
-    modeTabs.appendChild(tabOffset);
-
-    // --- Regex form ---
-    const regexForm = document.createElement('div');
-    regexForm.className = 'group-add-form-body';
-
-    const regexAdd = document.createElement('div');
-    regexAdd.className = 'group-regex-add';
-
-    // Custom Checkbox List for Files
-    const rxFileWrap = document.createElement('div');
-    rxFileWrap.className = 'group-regex-multi-wrap';
-    rxFileWrap.style.zIndex = '100'; // ensure it's above other cards in the flow
-
-    const rxFileBtn = document.createElement('button');
-    rxFileBtn.className = 'group-regex-multi-btn';
-    rxFileBtn.type = 'button';
-    rxFileBtn.innerHTML = 'Select Files <span class="arrow">▾</span>';
-
-    const rxFileDrop = document.createElement('div');
-    rxFileDrop.className = 'group-regex-multi-drop';
-    rxFileDrop.style.display = 'none';
-
-    function addCheckOption(id, label, isChecked) {
-      const lbl = document.createElement('label');
-      lbl.className = 'group-regex-multi-opt';
-      const chk = document.createElement('input');
-      chk.type = 'checkbox';
-      chk.value = id;
-      chk.checked = isChecked;
-
-      const txt = document.createElement('span');
-      txt.textContent = label;
-
-      lbl.appendChild(chk);
-      lbl.appendChild(txt);
-      rxFileDrop.appendChild(lbl);
-      return chk;
-    }
-
-    const allChk = addCheckOption('all', 'All Files', true);
-
-    // If 'All Files' is checked, uncheck others. If others checked, uncheck 'All Files'.
-    allChk.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        const others = rxFileDrop.querySelectorAll('input[type="checkbox"]:not([value="all"])');
-        others.forEach(c => c.checked = false);
-      }
-    });
-
-    files.forEach(f => {
-      const chk = addCheckOption(f.id, f.name, false);
-      chk.addEventListener('change', (e) => {
-        if (e.target.checked) allChk.checked = false;
-      });
-    });
-
-    rxFileBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const isOpening = rxFileDrop.style.display === 'none';
-      rxFileDrop.style.display = isOpening ? 'block' : 'none';
-
-      if (isOpening) {
-        // Smart flip: if close to bottom of screen, show above
-        const rect = rxFileBtn.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        if (spaceBelow < 180) { // dropdown is max ~150px
-          rxFileDrop.style.top = 'auto';
-          rxFileDrop.style.bottom = '100%';
-          rxFileDrop.style.marginTop = '0';
-          rxFileDrop.style.marginBottom = '4px';
-        } else {
-          rxFileDrop.style.top = '100%';
-          rxFileDrop.style.bottom = 'auto';
-          rxFileDrop.style.marginTop = '4px';
-          rxFileDrop.style.marginBottom = '0';
-        }
-      }
-      rxFileBtn.querySelector('.arrow').textContent = rxFileDrop.style.display === 'none' ? '▾' : '▴';
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('mousedown', (e) => {
-      if (!rxFileWrap.contains(e.target) && rxFileDrop.style.display === 'block') {
-        rxFileDrop.style.display = 'none';
-        rxFileBtn.querySelector('.arrow').textContent = '▾';
-      }
-    });
-
-    rxFileWrap.appendChild(rxFileBtn);
-    rxFileWrap.appendChild(rxFileDrop);
-
-    const rxInput = document.createElement('input');
-    rxInput.className = 'group-regex-input';
-    rxInput.type = 'text';
-    rxInput.placeholder = '/regex/gi';
-    rxInput.addEventListener('mousedown', e => e.stopPropagation());
-    rxInput.addEventListener('keydown', e => e.stopPropagation());
-    rxInput.addEventListener('keyup', e => e.stopPropagation());
-
-    const rxBtn = document.createElement('button');
-    rxBtn.className = 'group-regex-btn';
-    rxBtn.textContent = 'Add';
-    rxBtn.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      const val = rxInput.value.trim();
-      if (!val) return;
-      let pattern = val;
-      let flags = 'g';
-      const m = val.match(/^\/(.+)\/([a-z]*)$/);
-      if (m) {
-        pattern = m[1];
-        flags = m[2];
-      }
-      try {
-        new RegExp(pattern, flags);
-
-        // Gather selected values from checkbox list
-        const checks = Array.from(rxFileDrop.querySelectorAll('input[type="checkbox"]:checked'));
-        let fileIds = checks.map(c => c.value);
-        if (fileIds.length === 0 || fileIds.includes('all')) {
-          fileIds = ['all'];
-        }
-
-        g.regexes.push({ pattern, flags, fileIds });
-        rxInput.value = '';
-
-        // Reset checkboxes
-        allChk.checked = true;
-        const others = rxFileDrop.querySelectorAll('input[type="checkbox"]:not([value="all"])');
-        others.forEach(c => c.checked = false);
-        rxFileDrop.style.display = 'none';
-        rxFileBtn.querySelector('.arrow').textContent = '▾';
-
-        scheduleRecomputeRegex();
-      } catch (err) {
-        alert('Invalid regex: ' + err.message);
-      }
-    });
-
-    rxInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        rxBtn.dispatchEvent(new MouseEvent('mousedown'));
-      }
-    });
-
-    regexAdd.appendChild(rxFileWrap);
-    regexAdd.appendChild(rxInput);
-    regexAdd.appendChild(rxBtn);
-    regexForm.appendChild(regexAdd);
-
-    // --- Offset form ---
-    const offsetForm = document.createElement('div');
-    offsetForm.className = 'group-add-form-body';
-    offsetForm.style.display = 'none';
-
-    const offsetRow = document.createElement('div');
-    offsetRow.className = 'group-offset-add';
-
-    const offFileSel = document.createElement('select');
-    offFileSel.className = 'group-regex-input';
-    offFileSel.style.marginBottom = '4px';
-    files.forEach(f => offFileSel.appendChild(new Option(f.name, f.id)));
-    if (activeFileId) offFileSel.value = activeFileId;
-
-    const startIn = document.createElement('input');
-    startIn.className = 'group-regex-input';
-    startIn.type = 'text';
-    startIn.placeholder = 'Start (hex)';
-    startIn.addEventListener('mousedown', e => e.stopPropagation());
-    startIn.addEventListener('keydown', e => e.stopPropagation());
-    startIn.addEventListener('keyup', e => e.stopPropagation());
-
-    const endIn = document.createElement('input');
-    endIn.className = 'group-regex-input';
-    endIn.type = 'text';
-    endIn.placeholder = 'End (hex)';
-    endIn.addEventListener('mousedown', e => e.stopPropagation());
-    endIn.addEventListener('keydown', e => e.stopPropagation());
-    endIn.addEventListener('keyup', e => e.stopPropagation());
-
-    const offBtn = document.createElement('button');
-    offBtn.className = 'group-regex-btn';
-    offBtn.textContent = 'Add';
-    offBtn.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      const sVal = startIn.value.trim().replace(/^0x/i, '');
-      const eVal = endIn.value.trim().replace(/^0x/i, '');
-      const s = parseInt(sVal, 16);
-      const eEnd = parseInt(eVal, 16);
-      const selectedFileId = parseInt(offFileSel.value, 10);
-      if (isNaN(s) || isNaN(eEnd)) { alert('Enter valid hex offsets.'); return; }
-      if (s > eEnd) { alert('Start must be ≤ End.'); return; }
-
-      const fileEntry = files.find(f => f.id === selectedFileId);
-      if (fileEntry && eEnd >= fileEntry.dataView.length) { alert('End offset exceeds file size.'); return; }
-
-      g.ranges.push({ fileId: selectedFileId, start: s, end: eEnd });
-      startIn.value = '';
-      endIn.value = '';
-      rebuildByteGroupColor();
-      renderGroupsPanel();
-      refreshRows();
-    });
-
-    const submitOnEnter = (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        offBtn.dispatchEvent(new MouseEvent('mousedown'));
-      }
+    toggleBtn.onclick = () => {
+      addForm.style.display = addForm.style.display === 'none' ? 'block' : 'none';
+      toggleBtn.textContent = addForm.style.display === 'none' ? '+' : '−';
     };
-    startIn.addEventListener('keydown', submitOnEnter);
-    endIn.addEventListener('keydown', submitOnEnter);
 
-    offsetRow.appendChild(offFileSel);
-    offsetRow.appendChild(startIn);
-    offsetRow.appendChild(endIn);
-    offsetRow.appendChild(offBtn);
-    offsetForm.appendChild(offsetRow);
-
-    // --- Tab switching ---
-    tabRegex.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      tabRegex.classList.add('active');
-      tabOffset.classList.remove('active');
-      regexForm.style.display = '';
-      offsetForm.style.display = 'none';
-    });
-
-    tabOffset.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      tabOffset.classList.add('active');
-      tabRegex.classList.remove('active');
-      offsetForm.style.display = '';
-      regexForm.style.display = 'none';
-    });
-
-    // --- "+" Toggle Button ---
-    const toggleBtn = document.createElement('button');
-    toggleBtn.className = 'group-add-toggle';
-    toggleBtn.textContent = '+';
-    toggleBtn.title = 'Add regex pattern or offset range';
-    toggleBtn.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const isOpen = addForm.style.display !== 'none';
-      addForm.style.display = isOpen ? 'none' : '';
-      toggleBtn.textContent = isOpen ? '+' : '−';
-    });
-
-    addForm.appendChild(modeTabs);
-    addForm.appendChild(regexForm);
-    addForm.appendChild(offsetForm);
-
-    addSection.appendChild(toggleBtn);
     addSection.appendChild(addForm);
-    regexSec.appendChild(addSection);
-
-    card.appendChild(regexSec);
+    body.appendChild(regexSec);
+    body.appendChild(addSection);
 
     groupsList.appendChild(card);
   }

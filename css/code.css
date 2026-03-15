@@ -84,6 +84,81 @@
   overflow: hidden;
 }
 
+/* Tab bar */
+.code-tabs-bar {
+  display: flex;
+  align-items: center;
+  background: var(--bg-body);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 0 8px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.code-tabs-bar::-webkit-scrollbar {
+  height: 2px;
+}
+
+.code-tab {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+}
+
+.code-tab:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+}
+
+.code-tab.active {
+  background: #1d1f21;
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+
+.code-tab-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-add-script {
+  padding: 4px 10px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.btn-add-script:hover {
+  color: var(--accent);
+}
+
+.btn-del-script {
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.3;
+  transition: opacity 0.15s;
+}
+
+.code-tab:hover .btn-del-script {
+  opacity: 1;
+}
+
+.btn-del-script:hover {
+  color: #ff6b6b !important;
+}
+
 .code-editor-wrap {
   flex: 0 0 auto;
   /* Height controlled by JS */

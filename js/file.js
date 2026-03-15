@@ -50,11 +50,25 @@ if (pPickerEl) {
             nextGroupId = Math.max(...groups.map(g => g.id)) + 1;
           }
         }
-        if (proj.code !== undefined) {
-          codeInput.value = proj.code;
-          if (typeof updateSyntaxHighlighting === 'function') {
-            updateSyntaxHighlighting();
+        if (proj.scripts) {
+          scripts = proj.scripts;
+          activeScriptId = proj.activeScriptId || (scripts.length > 0 ? scripts[0].id : null);
+          if (typeof renderScriptTabs === 'function') {
+            renderScriptTabs();
+            // Load code into textarea immediately
+            const active = scripts.find(s => s.id === activeScriptId);
+            if (active) {
+              codeInput.value = active.code;
+              if (typeof updateSyntaxHighlighting === 'function') updateSyntaxHighlighting();
+            }
           }
+        } else if (proj.code !== undefined) {
+          // Legacy support
+          scripts = [{ id: 1, name: 'Imported Script', code: proj.code }];
+          activeScriptId = 1;
+          if (typeof renderScriptTabs === 'function') renderScriptTabs();
+          codeInput.value = proj.code;
+          if (typeof updateSyntaxHighlighting === 'function') updateSyntaxHighlighting();
         }
         rebuildByteGroupColor();
         scheduleRecomputeRegex();
@@ -85,9 +99,14 @@ if (svProj) {
         color: g.color,
         ranges: g.ranges,
         regexes: g.regexes || [],
-        regexRanges: []
+        regexRanges: [],
+        collapsed: !!g.collapsed
       })),
-      code: codeInput.value
+      scripts: scripts.map(s => {
+        if (s.id === activeScriptId) return { ...s, code: codeInput.value };
+        return s;
+      }),
+      activeScriptId: activeScriptId
     };
 
     const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });

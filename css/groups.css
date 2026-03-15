@@ -111,6 +111,10 @@
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+.group-card.collapsed .group-card-body {
+  display: none;
+}
+
 .group-card.active-group {
   border-color: var(--accent);
 }
@@ -123,6 +127,21 @@
   background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
   user-select: none;
+}
+
+.group-collapse-toggle {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  font-size: 8px;
+}
+
+.group-card.collapsed .group-collapse-toggle {
+  transform: rotate(-90deg);
 }
 
 .group-swatch {
