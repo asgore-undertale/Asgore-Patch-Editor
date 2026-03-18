@@ -308,15 +308,22 @@ function runUserCode() {
       id: f.id,
       name: f.name,
       path: f.path,
+      encoding: f.encoding || 'latin1',
       length: fDataView ? fDataView.length : 0,
       getString(start, end) {
         if (!fDataView) return "";
-        let s = '';
-        for (let i = start; i <= end && i < fDataView.length; i++) {
-          const val = fMods.has(i) ? fMods.get(i) : fDataView[i];
-          s += String.fromCharCode(val);
+        const len = Math.min(end, fDataView.length - 1) - start + 1;
+        if (len <= 0) return '';
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          const off = start + i;
+          bytes[i] = fMods.has(off) ? fMods.get(off) : fDataView[off];
         }
-        return s;
+        try {
+          return new TextDecoder(f.encoding || 'latin1').decode(bytes);
+        } catch (e) {
+          return new TextDecoder('latin1').decode(bytes);
+        }
       },
       CONTENT: new Proxy({}, {
         get(target, prop) {

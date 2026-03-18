@@ -122,41 +122,164 @@ function populateRow(el, rowIdx) {
     }
   }
 
-  // ASCII chars
+  // ASCII / Decoded Content chars — decode using file encoding
   const ascDiv = el.children[2];
   const ascSpans = ascDiv.querySelectorAll('.ascii-char');
+
+  // Get active file's encoding
+  const activeFile = files.find(f => f.id === activeFileId);
+  const fileEncoding = (activeFile && activeFile.encoding) || 'latin1';
+
+  // Collect bytes for this row
+  const rowBytes = new Uint8Array(BYTES_PER_ROW);
+  let rowByteCount = 0;
+  for (let i = 0; i < BYTES_PER_ROW; i++) {
+    const off = baseOff + i;
+    if (off < maxOff) {
+      rowBytes[i] = getByteAt(off);
+      rowByteCount++;
+    }
+  }
+
+  // Build a per-byte-position map for decoded characters
+  // charMap[i] = { char, isLead, charLen } where isLead marks the first byte of a character
+  const charMap = new Array(BYTES_PER_ROW).fill(null);
+
+  if (fileEncoding !== 'latin1' && fileEncoding !== 'iso-8859-1' && fileEncoding !== 'windows-1252' && rowByteCount > 0) {
+    // Universal byte-by-byte boundary discovery for variable width encodings
+    let i = 0;
+    while (i < rowByteCount) {
+      let charLen = 1;
+      let display = '.';
+      let valid = false;
+      
+      const decoder = new TextDecoder(fileEncoding, { fatal: true });
+      for (let len = 1; len <= 4 && i + len <= rowByteCount; len++) {
+        try {
+          const ch = decoder.decode(rowBytes.subarray(i, i + len));
+          // If it decodes successfully without throwing, we found the char boundary
+          const code = ch.codePointAt(0);
+          display = (code >= 0x20 && code !== 0xFFFD) ? ch : '.';
+          charLen = len;
+          valid = true;
+          break;
+        } catch (e) {
+          // Incomplete sequence or invalid bytes
+        }
+      }
+
+      if (valid && charLen > 1) {
+        charMap[i] = { char: display, isLead: true, charLen };
+        for (let k = 1; k < charLen; k++) {
+          charMap[i + k] = { char: '', isLead: false, charLen };
+        }
+      } else if (valid && charLen === 1) {
+        // Valid 1-byte char
+        const b = rowBytes[i];
+        display = isPrintable(b) ? String.fromCharCode(b) : '.';
+        charMap[i] = { char: display, isLead: true, charLen: 1 };
+      } else {
+        // Invalid sequence — fallback to 1 byte dot
+        charMap[i] = { char: '.', isLead: true, charLen: 1 };
+        charLen = 1; // ensure we increment only by 1
+      }
+      i += charLen;
+    }
+  }
+
   for (let i = 0; i < BYTES_PER_ROW; i++) {
     const off = baseOff + i;
     const span = ascSpans[i];
     if (off < maxOff) {
       const val = getByteAt(off);
-      const pr = isPrintable(val);
-      span.textContent = pr ? String.fromCharCode(val) : '.';
-      span.dataset.off = off;
+      const cm = charMap[i];
+
+      // Reset inline styles from previous render
+      span.style.flex = '';
+      span.style.textAlign = '';
+      span.style.overflow = '';
+      span.style.width = '';
+      span.style.padding = '';
       span.style.visibility = '';
 
-      let cls = 'ascii-char';
-      if (pr) cls += ' printable';
-      if (isInSelection(off)) {
-        cls += ' selected';
-        if (activePane === 'ascii') cls += ' active-pane';
+      if (cm) {
+        span.textContent = cm.char;
+        span.dataset.off = off;
+        span.dataset.charlen = cm.charLen;
+
+        if (cm.isLead && cm.charLen > 1) {
+          // Widen the lead span to cover all its bytes
+          span.style.flex = `0 0 ${cm.charLen * 8.4}px`;
+          span.style.textAlign = 'left';
+          span.style.paddingLeft = '2px';
+        } else if (!cm.isLead) {
+          // Hide continuation span (lead span already covers it)
+          span.style.flex = '0 0 0px';
+          span.style.overflow = 'hidden';
+          span.style.width = '0';
+          span.style.padding = '0';
+        }
+
+        let cls = 'ascii-char';
+        if (cm.isLead && cm.char !== '.' && cm.char !== '') cls += ' printable';
+        if (isInSelection(off)) {
+          cls += ' selected';
+          if (activePane === 'ascii') cls += ' active-pane';
+        }
+        if (mods.has(off)) cls += ' modified';
+        if (matchSetHex.has(off)) {
+          cls += ' search-match';
+          if (activeMatchIdx >= 0 && isInActiveMatch(off)) cls += ' search-active';
+        }
+        span.className = cls;
+        const gc2 = byteGroupColor.get(off);
+        span.style.backgroundColor = gc2 ? gc2 + '55' : '';
+        span.style.borderRadius = gc2 ? '2px' : '';
+      } else {
+        // Latin-1 fallback: byte-by-byte (also default when no charMap entry)
+        const displayChar = isPrintable(val) ? String.fromCharCode(val) : '.';
+        span.textContent = displayChar;
+        span.dataset.off = off;
+
+        let cls = 'ascii-char';
+        if (isPrintable(val)) cls += ' printable';
+        if (isInSelection(off)) {
+          cls += ' selected';
+          if (activePane === 'ascii') cls += ' active-pane';
+        }
+        if (mods.has(off)) cls += ' modified';
+        if (matchSetHex.has(off)) {
+          cls += ' search-match';
+          if (activeMatchIdx >= 0 && isInActiveMatch(off)) cls += ' search-active';
+        }
+        span.className = cls;
+        const gc2 = byteGroupColor.get(off);
+        span.style.backgroundColor = gc2 ? gc2 + '55' : '';
+        span.style.borderRadius = gc2 ? '2px' : '';
       }
-      if (mods.has(off)) cls += ' modified';
-      if (matchSetHex.has(off)) {
-        cls += ' search-match';
-        if (activeMatchIdx >= 0 && isInActiveMatch(off)) cls += ' search-active';
-      }
-      span.className = cls;
-      // Group color highlight
-      const gc2 = byteGroupColor.get(off);
-      span.style.backgroundColor = gc2 ? gc2 + '55' : '';
-      span.style.borderRadius = gc2 ? '2px' : '';
     } else {
       span.textContent = '';
       span.dataset.off = '';
       span.className = 'ascii-char';
       span.style.visibility = 'hidden';
+      span.style.flex = '';
+      span.style.overflow = '';
+      span.style.width = '';
+      span.style.padding = '';
     }
+  }
+}
+
+function getSelectionBounds() {
+  if (selStart < 0 || selEnd < 0) return { lo: -1, hi: -1 };
+  if (activePane === 'ascii') {
+    if (selStart <= selEnd) {
+      return { lo: selStart, hi: selEnd + selEndLen - 1 };
+    } else {
+      return { lo: selEnd, hi: selStart + selAnchorLen - 1 };
+    }
+  } else {
+    return { lo: Math.min(selStart, selEnd), hi: Math.max(selStart, selEnd) };
   }
 }
 
@@ -169,9 +292,8 @@ function isInActiveMatch(off) {
 
 function isInSelection(off) {
   if (selStart < 0) return false;
-  const lo = Math.min(selStart, selEnd);
-  const hi = Math.max(selStart, selEnd);
-  return off >= lo && off <= hi;
+  const bounds = getSelectionBounds();
+  return off >= bounds.lo && off <= bounds.hi;
 }
 
 // Force re-render all visible rows
@@ -185,14 +307,15 @@ function refreshRows() {
 // ── Selection (mousedown / mousemove / mouseup) ──
 function getOffsetFromEvent(e) {
   const t = e.target;
-  if (t.dataset.off === undefined && t.dataset.off !== '0') return -1;
+  if (t.dataset.off === undefined && t.dataset.off !== '0') return null;
   const off = parseInt(t.dataset.off, 10);
-  return isNaN(off) ? -1 : off;
+  const charLen = parseInt(t.dataset.charlen || '1', 10);
+  return isNaN(off) ? null : { off, charLen };
 }
 
 hexRows.addEventListener('mousedown', (e) => {
-  const off = getOffsetFromEvent(e);
-  if (off < 0 || !dataView) return;
+  const loc = getOffsetFromEvent(e);
+  if (!loc || !dataView) return;
   e.preventDefault();
 
   if (e.target.classList.contains('ascii-char')) {
@@ -203,11 +326,14 @@ hexRows.addEventListener('mousedown', (e) => {
 
   if (e.shiftKey && selStart >= 0) {
     // Extend selection from anchor
-    selEnd = off;
+    selEnd = loc.off;
+    selEndLen = loc.charLen;
   } else {
-    selStart = off;
-    selEnd = off;
-    selAnchor = off;
+    selStart = loc.off;
+    selAnchor = loc.off;
+    selAnchorLen = loc.charLen;
+    selEnd = loc.off;
+    selEndLen = loc.charLen;
   }
   isDragging = true;
   editNibble = -1;
@@ -217,9 +343,10 @@ hexRows.addEventListener('mousedown', (e) => {
 
 document.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
-  const off = getOffsetFromEvent(e);
-  if (off < 0) return;
-  selEnd = off;
+  const loc = getOffsetFromEvent(e);
+  if (!loc) return;
+  selEnd = loc.off;
+  selEndLen = loc.charLen;
   updateStatus();
   refreshRows();
 });
@@ -233,6 +360,8 @@ function selectByte(off, pane = activePane) {
   selStart = off;
   selEnd = off;
   selAnchor = off;
+  selAnchorLen = 1;
+  selEndLen = 1;
   activePane = pane;
   editNibble = -1;
   updateStatus();
@@ -259,8 +388,9 @@ document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
     e.preventDefault();
     if (!dataView || selStart < 0) return;
-    const lo = Math.min(selStart, selEnd);
-    const hi = Math.max(selStart, selEnd);
+    const bounds = getSelectionBounds();
+    const lo = bounds.lo;
+    const hi = bounds.hi;
 
     if (activePane === 'hex') {
       const hexParts = [];
@@ -269,12 +399,20 @@ document.addEventListener('keydown', (e) => {
       }
       navigator.clipboard.writeText(hexParts.join(' ')).catch(() => { });
     } else {
-      const chars = [];
+      // Copy decoded text using the file's encoding
+      const activeFile = files.find(f => f.id === activeFileId);
+      const enc = (activeFile && activeFile.encoding) || 'latin1';
+      const bytes = new Uint8Array(hi - lo + 1);
       for (let i = lo; i <= hi; i++) {
-        const val = getByteAt(i);
-        chars.push(isPrintable(val) ? String.fromCharCode(val) : '.');
+        bytes[i - lo] = getByteAt(i);
       }
-      navigator.clipboard.writeText(chars.join('')).catch(() => { });
+      let text;
+      try {
+        text = new TextDecoder(enc).decode(bytes);
+      } catch (e) {
+        text = new TextDecoder('latin1').decode(bytes);
+      }
+      navigator.clipboard.writeText(text).catch(() => { });
     }
     return;
   }
@@ -355,20 +493,43 @@ document.addEventListener('paste', (e) => {
   if (!text) return;
 
   e.preventDefault();
-  const lo = Math.min(selStart, selEnd);
-  const hi = Math.max(selStart, selEnd);
+  const bounds = getSelectionBounds();
+  const lo = bounds.lo;
+  const hi = bounds.hi;
   const removeLen = hi - lo + 1;
   let newBytes;
 
   if (activePane === 'hex') {
-    const clean = text.replace(/[^0-9a-fA-F]/g, '');
-    if (clean.length === 0 || clean.length % 2 !== 0) return;
+    let clean = text.replace(/[^0-9a-fA-F]/g, '');
+    if (clean.length === 0) return;
+    if (clean.length % 2 !== 0) clean += '0'; // Pad trailing nibble instead of dropping
     newBytes = new Uint8Array(clean.length / 2);
     for (let i = 0; i < newBytes.length; i++) {
       newBytes[i] = parseInt(clean.substr(i * 2, 2), 16);
     }
   } else {
-    newBytes = new TextEncoder().encode(text);
+    const activeFile = files.find(f => f.id === activeFileId);
+    const enc = (activeFile && activeFile.encoding) || 'latin1';
+    
+    if (enc === 'latin1' || enc === 'iso-8859-1' || enc === 'windows-1252') {
+      newBytes = new Uint8Array(text.length);
+      for (let i = 0; i < text.length; i++) newBytes[i] = text.charCodeAt(i) & 0xFF;
+    } else if (enc === 'utf-16le' || enc === 'utf-16be') {
+      const isLE = enc === 'utf-16le';
+      newBytes = new Uint8Array(text.length * 2);
+      for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        if (isLE) {
+          newBytes[i * 2] = code & 0xFF;
+          newBytes[i * 2 + 1] = code >> 8;
+        } else {
+          newBytes[i * 2] = code >> 8;
+          newBytes[i * 2 + 1] = code & 0xFF;
+        }
+      }
+    } else {
+      newBytes = new TextEncoder().encode(text); // UTF-8 and fallback
+    }
   }
 
   patchFile(activeFileId, lo, removeLen, newBytes);
@@ -376,6 +537,9 @@ document.addEventListener('paste', (e) => {
   // Update selection to cover the new pasted range
   selStart = lo;
   selEnd = lo + newBytes.length - 1;
+  selAnchor = lo;
+  selAnchorLen = 1;
+  selEndLen = 1;
   if (selEnd < selStart) selEnd = selStart; // Safety for 0-byte pastes
 
   refreshRows();
@@ -389,8 +553,9 @@ function updateStatus() {
     statusVal.textContent = 'Value: —';
     return;
   }
-  const lo = Math.min(selStart, selEnd);
-  const hi = Math.max(selStart, selEnd);
+  const bounds = getSelectionBounds();
+  const lo = bounds.lo;
+  const hi = bounds.hi;
   const count = hi - lo + 1;
   const curOff = selEnd;
   const val = getByteAt(curOff);
@@ -398,7 +563,7 @@ function updateStatus() {
   if (count > 1) {
     statusPos.textContent = `Offset: 0x${formatOffset(lo)}–0x${formatOffset(hi)}  (${count} bytes)`;
   } else {
-    statusPos.textContent = `Offset: 0x${formatOffset(curOff)} (${curOff})`;
+    statusPos.textContent = `Offset: 0x${formatOffset(curOff)} (Dec: ${curOff})`; // Added dec offset here for convenience
   }
 
   let valText = `Dec: ${val}  Hex: 0x${hexByte(val)}  Bin: ${val.toString(2).padStart(8, '0')}`;

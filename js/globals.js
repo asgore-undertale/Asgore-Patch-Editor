@@ -36,7 +36,8 @@ const codeRunnerPanel = $('#code-runner-panel');
 const groupsPanel = $('#groups-panel');
 
 // ── Multi-File Store ──────────────────────────
-// Each entry: { id, name, path, buffer, dataView, mods: Map }
+// Each entry: { id, name, path, buffer, dataView, mods: Map, encoding: string }
+const SUPPORTED_ENCODINGS = ['latin1', 'utf-8', 'utf-16le', 'utf-16be', 'shift-jis', 'euc-jp', 'iso-8859-1', 'windows-1252'];
 let files = [];
 let nextFileId = 1;
 let activeFileId = null;
@@ -50,12 +51,17 @@ let totalRows = 0;
 let selStart = -1;
 let selEnd = -1;
 let selAnchor = -1;
+let selAnchorLen = 1;
+let selEndLen = 1;
 let isDragging = false;
 let activePane = 'hex';
 let editNibble = -1;
 
 // Active file's modifications map: offset → new byte value
 let mods = new Map();
+
+// Preserved file encodings loaded from project
+let savedFileEncodings = {};
 
 // ── Global references to access later ──────────
 let codeInput; // assigned later in the file

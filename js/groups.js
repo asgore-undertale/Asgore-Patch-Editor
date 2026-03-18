@@ -402,6 +402,85 @@ btnAddGroup.addEventListener('mousedown', (e) => {
 });
 
 
+function formatBytesToMixedString(sub, encStr) {
+  let decodedStr = "";
+  const enc = encStr || 'latin1';
+  if (enc !== 'latin1' && enc !== 'iso-8859-1' && enc !== 'windows-1252') {
+    let i = 0;
+    const decoder = new TextDecoder(enc, { fatal: true });
+    while (i < sub.length) {
+      let valid = false;
+      let display = '';
+      for (let len = 1; len <= 4 && i + len <= sub.length; len++) {
+        try {
+          const ch = decoder.decode(sub.subarray(i, i + len));
+          const code = ch.codePointAt(0);
+          if (code >= 0x20 && code !== 0x7F && code !== 0xFFFD) {
+            display = ch;
+          } else {
+            display = Array.from(sub.subarray(i, i + len)).map(b => `[${b.toString(16).padStart(2, '0').toUpperCase()}]`).join('');
+          }
+          valid = true;
+          decodedStr += display;
+          i += len;
+          break;
+        } catch (e) { }
+      }
+      if (!valid) {
+        decodedStr += `[${sub[i].toString(16).padStart(2, '0').toUpperCase()}]`;
+        i++;
+      }
+    }
+  } else {
+    for (let i = 0; i < sub.length; i++) {
+      const b = sub[i];
+      decodedStr += (b >= 0x20 && b !== 0x7F) ? String.fromCharCode(b) : `[${b.toString(16).padStart(2, '0').toUpperCase()}]`;
+    }
+  }
+  return decodedStr;
+}
+
+function parseMixedStringToBytes(repStr, encStr) {
+  const enc = encStr || 'latin1';
+  const bytes = [];
+  let i = 0;
+  while (i < repStr.length) {
+    if (repStr[i] === '[' && i + 3 < repStr.length && repStr[i+3] === ']') {
+      const hexStr = repStr.substring(i+1, i+3);
+      if (/^[0-9A-Fa-f]{2}$/.test(hexStr)) {
+        bytes.push(parseInt(hexStr, 16));
+        i += 4;
+        continue;
+      }
+    }
+    let char = repStr[i];
+    let isSurrogate = false;
+    if (i + 1 < repStr.length && char.charCodeAt(0) >= 0xD800 && char.charCodeAt(0) <= 0xDBFF) {
+      char += repStr[i+1];
+      isSurrogate = true;
+    }
+    let charBytes = [];
+    if (enc === 'latin1' || enc === 'iso-8859-1' || enc === 'windows-1252') {
+      charBytes.push(char.charCodeAt(0) & 0xFF);
+    } else if (enc === 'utf-16le' || enc === 'utf-16be') {
+      const isLE = enc === 'utf-16le';
+      for (let j = 0; j < char.length; j++) {
+        const code = char.charCodeAt(j);
+        if (isLE) {
+          charBytes.push(code & 0xFF, code >> 8);
+        } else {
+          charBytes.push(code >> 8, code & 0xFF);
+        }
+      }
+    } else {
+      charBytes = Array.from(new TextEncoder().encode(char));
+    }
+    bytes.push(...charBytes);
+    i += isSurrogate ? 2 : 1;
+  }
+  return new Uint8Array(bytes);
+}
+
 /**
  * Exports a single group's matched ranges to an Excel file.
  * Each file referenced by the group gets its own sheet.
@@ -443,7 +522,7 @@ function exportGroupToExcel(g) {
           const off = r.start + i;
           sub[i] = fileEntry.mods.has(off) ? fileEntry.mods.get(off) : fileEntry.buffer[off];
         }
-        matchStr = new TextDecoder().decode(sub);
+        matchStr = formatBytesToMixedString(sub, fileEntry.encoding);
       }
       return {
         "Start Offset": `0x${formatOffset(r.start)}`,
@@ -518,8 +597,8 @@ function importFromWorkbook(workbook, groupName) {
         g.ranges.push({ fileId: targetFile.id, start, end });
         const replacement = row["Replacement String"];
         if (replacement !== undefined && replacement !== null && String(replacement).length > 0) {
-          const encoder = new TextEncoder();
-          const bytes = encoder.encode(String(replacement));
+          const repStr = String(replacement).trim();
+          const bytes = parseMixedStringToBytes(repStr, targetFile.encoding);
           patchFile(targetFile.id, start, (end - start + 1), bytes);
         }
       }

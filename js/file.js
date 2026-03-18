@@ -75,6 +75,18 @@ if (pPickerEl) {
         renderGroupsPanel();
         refreshRows();
 
+        // Restore file encodings
+        if (proj.fileEncodings) {
+          savedFileEncodings = proj.fileEncodings;
+          for (const f of files) {
+            f.encoding = savedFileEncodings[f.name] || savedFileEncodings[f.id] || f.encoding;
+          }
+          // Sync encoding selector
+          const encSel = document.getElementById('status-encoding');
+          const activeF = files.find(f => f.id === activeFileId);
+          if (encSel && activeF) encSel.value = activeF.encoding || 'latin1';
+        }
+
         // Switch UI to hex editor
         if (welcomeScr && hexEditor) {
           welcomeScr.classList.add('hidden');
@@ -106,7 +118,15 @@ if (svProj) {
         if (s.id === activeScriptId) return { ...s, code: codeInput.value };
         return s;
       }),
-      activeScriptId: activeScriptId
+      activeScriptId: activeScriptId,
+      fileEncodings: {
+        ...savedFileEncodings,
+        ...files.reduce((acc, f) => { 
+          acc[f.name] = f.encoding || 'latin1'; 
+          acc[f.id] = f.encoding || 'latin1'; // fallback for older clients
+          return acc; 
+        }, {})
+      }
     };
 
     const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });

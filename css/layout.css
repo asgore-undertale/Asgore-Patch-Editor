@@ -423,6 +423,26 @@ kbd {
   color: var(--modified);
 }
 
+#status-encoding {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  padding: 1px 4px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s;
+}
+
+#status-encoding:hover,
+#status-encoding:focus {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(105, 219, 124, 0.08);
+}
+
 /* ══════════════════════════════════════════════════
    RESPONSIVE
    ══════════════════════════════════════════════════ */

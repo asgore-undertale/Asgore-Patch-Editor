@@ -11,6 +11,22 @@ window.addEventListener('DOMContentLoaded', () => {
   if (bwFolder && dPicker) {
     bwFolder.addEventListener('click', () => dPicker.click());
   }
+
+  // ── Encoding selector ───────────────────────────
+  const encSelect = document.getElementById('status-encoding');
+  if (encSelect) {
+    encSelect.addEventListener('change', () => {
+      if (!activeFileId) return;
+      const entry = files.find(f => f.id === activeFileId);
+      if (entry) {
+        entry.encoding = encSelect.value;
+        // Refresh all views that depend on encoding
+        if (typeof refreshRows === 'function') refreshRows();
+        if (typeof renderGroupsPanel === 'function') renderGroupsPanel();
+        if (typeof fileAsciiStr !== 'undefined') fileAsciiStr = null;
+      }
+    });
+  }
 });
 // ── Keyboard shortcuts ─────────────────────────
 document.addEventListener('keydown', (e) => {

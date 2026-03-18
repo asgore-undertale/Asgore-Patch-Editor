@@ -38,15 +38,21 @@ function addFile(buffer, name, path) {
         buffer: new Uint8Array(buffer),
         dataView: new Uint8Array(buffer),
         mods: new Map(),
+        encoding: savedFileEncodings[name] || savedFileEncodings[id] || 'latin1',
         getString(start, end) {
-            let s = '';
-            // If this is the active file, use the global 'mods' map which has latest edits
+            const len = Math.min(end, this.dataView.length - 1) - start + 1;
+            if (len <= 0) return '';
+            const bytes = new Uint8Array(len);
             const fMods = (typeof activeFileId !== 'undefined' && activeFileId === this.id) ? mods : this.mods;
-            for (let i = start; i <= end && i < this.dataView.length; i++) {
-                const val = fMods.has(i) ? fMods.get(i) : this.dataView[i];
-                s += (val < 32 || val > 126) ? '.' : String.fromCharCode(val);
+            for (let i = 0; i < len; i++) {
+                const off = start + i;
+                bytes[i] = fMods.has(off) ? fMods.get(off) : this.dataView[off];
             }
-            return s;
+            try {
+                return new TextDecoder(this.encoding || 'latin1').decode(bytes);
+            } catch (e) {
+                return new TextDecoder('latin1').decode(bytes);
+            }
         }
     };
     files.push(entry);
@@ -112,6 +118,9 @@ function switchToFile(id) {
     fileSizeEl.textContent = formatSize(dataView.length);
     statusMod.classList.add('hidden');
     if (mods.size > 0) statusMod.classList.remove('hidden');
+    // Sync encoding selector
+    const encSel = document.getElementById('status-encoding');
+    if (encSel && encSel.tagName === 'SELECT') encSel.value = entry.encoding || 'latin1';
     updateStatus();
     clearSearch();
 

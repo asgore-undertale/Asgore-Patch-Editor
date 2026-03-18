@@ -135,7 +135,7 @@
             <span>08</span><span>09</span><span>0A</span><span>0B</span>
             <span>0C</span><span>0D</span><span>0E</span><span>0F</span>
           </div>
-          <div class="col-ascii">Decoded ASCII</div>
+          <div class="col-ascii">Decoded Content</div>
         </div>
 
         <!-- Scrollable container -->
@@ -312,7 +312,17 @@ if (XLS.sheetNames.length > 0) {
     </div>
     <div class="status-right">
       <span id="status-modified" class="badge hidden">Modified</span>
-      <span id="status-encoding">UTF-8</span>
+      <select id="status-encoding" title="File encoding">
+        <option value="latin1">Latin-1</option>
+        <option value="utf-8">UTF-8</option>
+        <option value="utf-16le">UTF-16 LE</option>
+        <option value="utf-16be">UTF-16 BE</option>
+        <option value="shift-jis">Shift-JIS</option>
+        <option value="euc-jp">EUC-JP</option>
+        <option value="iso-8859-1">ISO-8859-1</option>
+        <option value="windows-1252">Windows-1252</option>
+      </select>
+
     </div>
   </footer>
 
