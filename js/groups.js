@@ -369,26 +369,290 @@ function renderGroupsPanel() {
     });
     if (g.regexes.length > 0) regexSec.appendChild(regexList);
 
-    // Add Section
+    // ── Unified "+" Add Section ──────────────────
     const addSection = document.createElement('div');
     addSection.className = 'group-add-section';
-    const toggleBtn = document.createElement('button');
-    toggleBtn.className = 'group-add-toggle';
-    toggleBtn.textContent = '+';
-    addSection.appendChild(toggleBtn);
 
+    // The form container (hidden by default)
     const addForm = document.createElement('div');
     addForm.className = 'group-add-form';
     addForm.style.display = 'none';
 
-    toggleBtn.onclick = () => {
-      addForm.style.display = addForm.style.display === 'none' ? 'block' : 'none';
-      toggleBtn.textContent = addForm.style.display === 'none' ? '+' : '−';
-    };
+    // Mode tabs: Regex | Offset
+    const modeTabs = document.createElement('div');
+    modeTabs.className = 'group-add-tabs';
 
+    const tabRegex = document.createElement('button');
+    tabRegex.className = 'group-add-tab active';
+    tabRegex.textContent = 'Regex';
+
+    const tabOffset = document.createElement('button');
+    tabOffset.className = 'group-add-tab';
+    tabOffset.textContent = 'Offset Range';
+
+    modeTabs.appendChild(tabRegex);
+    modeTabs.appendChild(tabOffset);
+
+    // --- Regex form ---
+    const regexForm = document.createElement('div');
+    regexForm.className = 'group-add-form-body';
+
+    const regexAdd = document.createElement('div');
+    regexAdd.className = 'group-regex-add';
+
+    // Custom Checkbox List for Files
+    const rxFileWrap = document.createElement('div');
+    rxFileWrap.className = 'group-regex-multi-wrap';
+    rxFileWrap.style.zIndex = '100'; // ensure it's above other cards in the flow
+
+    const rxFileBtn = document.createElement('button');
+    rxFileBtn.className = 'group-regex-multi-btn';
+    rxFileBtn.type = 'button';
+    rxFileBtn.innerHTML = 'Select Files <span class="arrow">▾</span>';
+
+    const rxFileDrop = document.createElement('div');
+    rxFileDrop.className = 'group-regex-multi-drop';
+    rxFileDrop.style.display = 'none';
+
+    function addCheckOption(id, label, isChecked) {
+      const lbl = document.createElement('label');
+      lbl.className = 'group-regex-multi-opt';
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.value = id;
+      chk.checked = isChecked;
+
+      const txt = document.createElement('span');
+      txt.textContent = label;
+
+      lbl.appendChild(chk);
+      lbl.appendChild(txt);
+      rxFileDrop.appendChild(lbl);
+      return chk;
+    }
+
+    const allChk = addCheckOption('all', 'All Files', true);
+
+    // If 'All Files' is checked, uncheck others. If others checked, uncheck 'All Files'.
+    allChk.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        const others = rxFileDrop.querySelectorAll('input[type="checkbox"]:not([value="all"])');
+        others.forEach(c => c.checked = false);
+      }
+    });
+
+    files.forEach(f => {
+      const chk = addCheckOption(f.id, f.name, false);
+      chk.addEventListener('change', (e) => {
+        if (e.target.checked) allChk.checked = false;
+      });
+    });
+
+    rxFileBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isOpening = rxFileDrop.style.display === 'none';
+      rxFileDrop.style.display = isOpening ? 'block' : 'none';
+
+      if (isOpening) {
+        // Smart flip: if close to bottom of screen, show above
+        const rect = rxFileBtn.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < 180) { // dropdown is max ~150px
+          rxFileDrop.style.top = 'auto';
+          rxFileDrop.style.bottom = '100%';
+          rxFileDrop.style.marginTop = '0';
+          rxFileDrop.style.marginBottom = '4px';
+        } else {
+          rxFileDrop.style.top = '100%';
+          rxFileDrop.style.bottom = 'auto';
+          rxFileDrop.style.marginTop = '4px';
+          rxFileDrop.style.marginBottom = '0';
+        }
+      }
+      rxFileBtn.querySelector('.arrow').textContent = rxFileDrop.style.display === 'none' ? '▾' : '▴';
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('mousedown', (e) => {
+      if (!rxFileWrap.contains(e.target) && rxFileDrop.style.display === 'block') {
+        rxFileDrop.style.display = 'none';
+        rxFileBtn.querySelector('.arrow').textContent = '▾';
+      }
+    });
+
+    rxFileWrap.appendChild(rxFileBtn);
+    rxFileWrap.appendChild(rxFileDrop);
+
+    const rxInput = document.createElement('input');
+    rxInput.className = 'group-regex-input';
+    rxInput.type = 'text';
+    rxInput.placeholder = '/regex/gi';
+    rxInput.addEventListener('mousedown', e => e.stopPropagation());
+    rxInput.addEventListener('keydown', e => e.stopPropagation());
+    rxInput.addEventListener('keyup', e => e.stopPropagation());
+
+    const rxBtn = document.createElement('button');
+    rxBtn.className = 'group-regex-btn';
+    rxBtn.textContent = 'Add';
+    rxBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const val = rxInput.value.trim();
+      if (!val) return;
+      let pattern = val;
+      let flags = 'g';
+      const m = val.match(/^\/(.+)\/([a-z]*)$/);
+      if (m) {
+        pattern = m[1];
+        flags = m[2];
+      }
+      try {
+        new RegExp(pattern, flags);
+
+        // Gather selected values from checkbox list
+        const checks = Array.from(rxFileDrop.querySelectorAll('input[type="checkbox"]:checked'));
+        let fileIds = checks.map(c => c.value);
+        if (fileIds.length === 0 || fileIds.includes('all')) {
+          fileIds = ['all'];
+        }
+
+        g.regexes.push({ pattern, flags, fileIds });
+        rxInput.value = '';
+
+        // Reset checkboxes
+        allChk.checked = true;
+        const others = rxFileDrop.querySelectorAll('input[type="checkbox"]:not([value="all"])');
+        others.forEach(c => c.checked = false);
+        rxFileDrop.style.display = 'none';
+        rxFileBtn.querySelector('.arrow').textContent = '▾';
+
+        scheduleRecomputeRegex();
+      } catch (err) {
+        alert('Invalid regex: ' + err.message);
+      }
+    });
+
+    rxInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        rxBtn.dispatchEvent(new MouseEvent('mousedown'));
+      }
+    });
+
+    regexAdd.appendChild(rxFileWrap);
+    regexAdd.appendChild(rxInput);
+    regexAdd.appendChild(rxBtn);
+    regexForm.appendChild(regexAdd);
+
+    // --- Offset form ---
+    const offsetForm = document.createElement('div');
+    offsetForm.className = 'group-add-form-body';
+    offsetForm.style.display = 'none';
+
+    const offsetRow = document.createElement('div');
+    offsetRow.className = 'group-offset-add';
+
+    const offFileSel = document.createElement('select');
+    offFileSel.className = 'group-regex-input';
+    offFileSel.style.marginBottom = '4px';
+    files.forEach(f => offFileSel.appendChild(new Option(f.name, f.id)));
+    if (activeFileId) offFileSel.value = activeFileId;
+
+    const startIn = document.createElement('input');
+    startIn.className = 'group-regex-input';
+    startIn.type = 'text';
+    startIn.placeholder = 'Start (hex)';
+    startIn.addEventListener('mousedown', e => e.stopPropagation());
+    startIn.addEventListener('keydown', e => e.stopPropagation());
+    startIn.addEventListener('keyup', e => e.stopPropagation());
+
+    const endIn = document.createElement('input');
+    endIn.className = 'group-regex-input';
+    endIn.type = 'text';
+    endIn.placeholder = 'End (hex)';
+    endIn.addEventListener('mousedown', e => e.stopPropagation());
+    endIn.addEventListener('keydown', e => e.stopPropagation());
+    endIn.addEventListener('keyup', e => e.stopPropagation());
+
+    const offBtn = document.createElement('button');
+    offBtn.className = 'group-regex-btn';
+    offBtn.textContent = 'Add';
+    offBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const sVal = startIn.value.trim().replace(/^0x/i, '');
+      const eVal = endIn.value.trim().replace(/^0x/i, '');
+      const s = parseInt(sVal, 16);
+      const eEnd = parseInt(eVal, 16);
+      const selectedFileId = parseInt(offFileSel.value, 10);
+      if (isNaN(s) || isNaN(eEnd)) { alert('Enter valid hex offsets.'); return; }
+      if (s > eEnd) { alert('Start must be ≤ End.'); return; }
+
+      const fileEntry = files.find(f => f.id === selectedFileId);
+      if (fileEntry && eEnd >= fileEntry.dataView.length) { alert('End offset exceeds file size.'); return; }
+
+      g.ranges.push({ fileId: selectedFileId, start: s, end: eEnd });
+      startIn.value = '';
+      endIn.value = '';
+      rebuildByteGroupColor();
+      renderGroupsPanel();
+      refreshRows();
+    });
+
+    const submitOnEnter = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        offBtn.dispatchEvent(new MouseEvent('mousedown'));
+      }
+    };
+    startIn.addEventListener('keydown', submitOnEnter);
+    endIn.addEventListener('keydown', submitOnEnter);
+
+    offsetRow.appendChild(offFileSel);
+    offsetRow.appendChild(startIn);
+    offsetRow.appendChild(endIn);
+    offsetRow.appendChild(offBtn);
+    offsetForm.appendChild(offsetRow);
+
+    // --- Tab switching ---
+    tabRegex.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      tabRegex.classList.add('active');
+      tabOffset.classList.remove('active');
+      regexForm.style.display = '';
+      offsetForm.style.display = 'none';
+    });
+
+    tabOffset.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      tabOffset.classList.add('active');
+      tabRegex.classList.remove('active');
+      offsetForm.style.display = '';
+      regexForm.style.display = 'none';
+    });
+
+    // --- "+" Toggle Button ---
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'group-add-toggle';
+    toggleBtn.textContent = '+';
+    toggleBtn.title = 'Add regex pattern or offset range';
+    toggleBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const isOpen = addForm.style.display !== 'none';
+      addForm.style.display = isOpen ? 'none' : '';
+      toggleBtn.textContent = isOpen ? '+' : '−';
+    });
+
+    addForm.appendChild(modeTabs);
+    addForm.appendChild(regexForm);
+    addForm.appendChild(offsetForm);
+
+    addSection.appendChild(toggleBtn);
     addSection.appendChild(addForm);
-    body.appendChild(regexSec);
-    body.appendChild(addSection);
+    regexSec.appendChild(addSection);
+
+    card.appendChild(regexSec);
 
     groupsList.appendChild(card);
   }
@@ -401,85 +665,6 @@ btnAddGroup.addEventListener('mousedown', (e) => {
   createGroup(`Group ${num}`, color);
 });
 
-
-function formatBytesToMixedString(sub, encStr) {
-  let decodedStr = "";
-  const enc = encStr || 'latin1';
-  if (enc !== 'latin1' && enc !== 'iso-8859-1' && enc !== 'windows-1252') {
-    let i = 0;
-    const decoder = new TextDecoder(enc, { fatal: true });
-    while (i < sub.length) {
-      let valid = false;
-      let display = '';
-      for (let len = 1; len <= 4 && i + len <= sub.length; len++) {
-        try {
-          const ch = decoder.decode(sub.subarray(i, i + len));
-          const code = ch.codePointAt(0);
-          if (code >= 0x20 && code !== 0x7F && code !== 0xFFFD) {
-            display = ch;
-          } else {
-            display = Array.from(sub.subarray(i, i + len)).map(b => `[${b.toString(16).padStart(2, '0').toUpperCase()}]`).join('');
-          }
-          valid = true;
-          decodedStr += display;
-          i += len;
-          break;
-        } catch (e) { }
-      }
-      if (!valid) {
-        decodedStr += `[${sub[i].toString(16).padStart(2, '0').toUpperCase()}]`;
-        i++;
-      }
-    }
-  } else {
-    for (let i = 0; i < sub.length; i++) {
-      const b = sub[i];
-      decodedStr += (b >= 0x20 && b !== 0x7F) ? String.fromCharCode(b) : `[${b.toString(16).padStart(2, '0').toUpperCase()}]`;
-    }
-  }
-  return decodedStr;
-}
-
-function parseMixedStringToBytes(repStr, encStr) {
-  const enc = encStr || 'latin1';
-  const bytes = [];
-  let i = 0;
-  while (i < repStr.length) {
-    if (repStr[i] === '[' && i + 3 < repStr.length && repStr[i+3] === ']') {
-      const hexStr = repStr.substring(i+1, i+3);
-      if (/^[0-9A-Fa-f]{2}$/.test(hexStr)) {
-        bytes.push(parseInt(hexStr, 16));
-        i += 4;
-        continue;
-      }
-    }
-    let char = repStr[i];
-    let isSurrogate = false;
-    if (i + 1 < repStr.length && char.charCodeAt(0) >= 0xD800 && char.charCodeAt(0) <= 0xDBFF) {
-      char += repStr[i+1];
-      isSurrogate = true;
-    }
-    let charBytes = [];
-    if (enc === 'latin1' || enc === 'iso-8859-1' || enc === 'windows-1252') {
-      charBytes.push(char.charCodeAt(0) & 0xFF);
-    } else if (enc === 'utf-16le' || enc === 'utf-16be') {
-      const isLE = enc === 'utf-16le';
-      for (let j = 0; j < char.length; j++) {
-        const code = char.charCodeAt(j);
-        if (isLE) {
-          charBytes.push(code & 0xFF, code >> 8);
-        } else {
-          charBytes.push(code >> 8, code & 0xFF);
-        }
-      }
-    } else {
-      charBytes = Array.from(new TextEncoder().encode(char));
-    }
-    bytes.push(...charBytes);
-    i += isSurrogate ? 2 : 1;
-  }
-  return new Uint8Array(bytes);
-}
 
 /**
  * Exports a single group's matched ranges to an Excel file.
@@ -522,7 +707,7 @@ function exportGroupToExcel(g) {
           const off = r.start + i;
           sub[i] = fileEntry.mods.has(off) ? fileEntry.mods.get(off) : fileEntry.buffer[off];
         }
-        matchStr = formatBytesToMixedString(sub, fileEntry.encoding);
+        matchStr = new TextDecoder().decode(sub);
       }
       return {
         "Start Offset": `0x${formatOffset(r.start)}`,
@@ -597,8 +782,8 @@ function importFromWorkbook(workbook, groupName) {
         g.ranges.push({ fileId: targetFile.id, start, end });
         const replacement = row["Replacement String"];
         if (replacement !== undefined && replacement !== null && String(replacement).length > 0) {
-          const repStr = String(replacement).trim();
-          const bytes = parseMixedStringToBytes(repStr, targetFile.encoding);
+          const encoder = new TextEncoder();
+          const bytes = encoder.encode(String(replacement));
           patchFile(targetFile.id, start, (end - start + 1), bytes);
         }
       }
